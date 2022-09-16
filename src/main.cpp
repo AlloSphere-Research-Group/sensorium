@@ -54,6 +54,10 @@ struct SensoriumApp : DistributedAppWithState<State> {
 
     sphereImage = Image(dataPath + "land_shallow_topo_21600_brighter.jpg");
     skyImage = Image(dataPath + "milkyway.png");
+    if (skyImage.array().size() == 0) {
+      std::cout << "failed to load image " << dataPath + "milkyway.png"
+                << std::endl;
+    }
 
     sphereTex.create2D(sphereImage.width(), sphereImage.height());
     sphereTex.filter(Texture::LINEAR);
