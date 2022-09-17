@@ -6,17 +6,14 @@
 
 using namespace al;
 
-struct State {
-  Pose pose;
-};
-
 struct GeoLoc {
   float lat;
   float lon;
   float radius;
 };
 
-struct SensoriumApp : DistributedAppWithState<State> {
+class SensoriumApp : public DistributedApp {
+public:
   VAOMesh skyMesh, sphereMesh;
   Image skyImage, sphereImage;
   Texture skyTex, sphereTex;
@@ -25,6 +22,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 2.1, 50.0};
+
+  ParameterPose pose{"pose", ""};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   double morphProgress{0.0}, morphDuration{2.0};
@@ -54,10 +53,6 @@ struct SensoriumApp : DistributedAppWithState<State> {
 
     sphereImage = Image(dataPath + "land_shallow_topo_21600_brighter.jpg");
     skyImage = Image(dataPath + "milkyway.png");
-    if (skyImage.array().size() == 0) {
-      std::cout << "failed to load image " << dataPath + "milkyway.png"
-                << std::endl;
-    }
 
     sphereTex.create2D(sphereImage.width(), sphereImage.height());
     sphereTex.filter(Texture::LINEAR);
@@ -74,7 +69,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
       *gui << lat << lon << radius;
     }
 
-    parameterServer() << lat << lon << radius;
+    parameterServer() << lat << lon << radius << pose;
 
     lat.registerChangeCallback([&](float value) {
       nav().pos(Vec3d(radius.get() * cos(value / 180.0 * M_PI) *
@@ -129,9 +124,9 @@ struct SensoriumApp : DistributedAppWithState<State> {
         // nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
       }
 
-      state().pose = nav();
+      pose.set(nav());
     } else {
-      nav().set(state().pose);
+      nav().set(pose.get());
     }
   }
 
