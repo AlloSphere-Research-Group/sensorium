@@ -41,8 +41,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   }
 
   void onCreate() override {
-    // nav().pos(0, 0, -5);
-    // nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
+    lens().fovy(45);
+    nav().pos(0, 0, -5);
+    nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
     addSphereWithTexcoords(skyMesh, 50, 50, true);
     skyMesh.update();
