@@ -45,7 +45,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   }
 
   void onCreate() override {
-    lens().fovy(45);
+    lens().fovy(45).eyeSep(0);
     nav().pos(0, 0, -5);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
@@ -91,7 +91,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       *gui << lat << lon << radius;
     }
 
-    parameterServer() << lat << lon << radius;
+    // enable if parameter needs to be shared
+    // parameterServer() << lat << lon << radius;
 
     lat.registerChangeCallback([&](float value) {
       nav().pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
