@@ -28,7 +28,11 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   Parameter radius{"radius", "", 5.0, 2.1, 50.0};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
-  double morphProgress{0.0}, morphDuration{3.0};
+
+  double morphProgress{0.0};
+  const double morphDuration{5.0};
+  const float hoverHeight{10.f};
+  const double hoverDuration{2.0};
 
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
@@ -129,13 +133,15 @@ struct SensoriumApp : public DistributedAppWithState<State> {
                                        (morphProgress / morphDuration));
         lon.set(targetGeoLoc.lon + (sourceGeoLoc.lon - targetGeoLoc.lon) *
                                        (morphProgress / morphDuration));
-        if (morphProgress + 1.5 > morphDuration) {
-          radius.set(10.0 + (sourceGeoLoc.radius - 10.0) *
-                                (morphProgress - morphDuration + 1.5) / 1.5);
+        if (morphProgress + hoverDuration > morphDuration) {
+          radius.set(hoverHeight +
+                     (sourceGeoLoc.radius - hoverHeight) *
+                         (morphProgress - morphDuration + hoverDuration) /
+                         hoverDuration);
         } else {
           radius.set(targetGeoLoc.radius +
-                     (10.0 - targetGeoLoc.radius) *
-                         (morphProgress / (morphDuration - 1.5)));
+                     (hoverHeight - targetGeoLoc.radius) *
+                         (morphProgress / (morphDuration - hoverDuration)));
         }
       } else {
         Vec3d pos = nav().pos();
