@@ -1,6 +1,6 @@
 cmake_minimum_required(VERSION 3.0)
 
-project(Allotemplate)
+project(Sensorium)
 
 # name of application. replace 'app' with desired app name
 set(APP_NAME app)

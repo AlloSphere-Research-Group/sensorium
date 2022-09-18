@@ -3,8 +3,13 @@
 #include "al/app/al_DistributedApp.hpp"
 #include "al/app/al_GUIDomain.hpp"
 #include "al/graphics/al_Image.hpp"
+#include "al_ext/statedistribution/al_CuttleboneDomain.hpp"
 
 using namespace al;
+
+struct State {
+  Pose global_pose;
+};
 
 struct GeoLoc {
   float lat;
@@ -12,8 +17,7 @@ struct GeoLoc {
   float radius;
 };
 
-class SensoriumApp : public DistributedApp {
-public:
+struct SensoriumApp : public DistributedAppWithState<State> {
   VAOMesh skyMesh, sphereMesh;
   Image skyImage, sphereImage;
   Texture skyTex, sphereTex;
@@ -23,13 +27,20 @@ public:
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 2.1, 50.0};
 
-  ParameterPose pose{"pose", ""};
-
   GeoLoc sourceGeoLoc, targetGeoLoc;
-  double morphProgress{0.0}, morphDuration{2.0};
+  double morphProgress{0.0}, morphDuration{3.0};
+
+  std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
+
+  void onInit() override {
+    cuttleboneDomain = CuttleboneDomain<State>::enableCuttlebone(this);
+    if (!cuttleboneDomain) {
+      std::cerr << "ERROR: Could not start Cuttlebone" << std::endl;
+      quit();
+    }
+  }
 
   void onCreate() override {
-    lens().near(0.1).far(100).fovy(45);
     nav().pos(0, 0, -5);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
@@ -51,8 +62,14 @@ public:
       dataPath = "C:/Users/kenny/data/sensorium/";
     }
 
-    sphereImage = Image(dataPath + "land_shallow_topo_21600_brighter.jpg");
+    sphereImage = Image(dataPath + "blue_marble.jpg");
+    if (sphereImage.array().size() == 0) {
+      std::cerr << "failed to load sphere image" << std::endl;
+    }
     skyImage = Image(dataPath + "milkyway.png");
+    if (skyImage.array().size() == 0) {
+      std::cerr << "failed to load background image" << std::endl;
+    }
 
     sphereTex.create2D(sphereImage.width(), sphereImage.height());
     sphereTex.filter(Texture::LINEAR);
@@ -69,10 +86,10 @@ public:
       *gui << lat << lon << radius;
     }
 
-    parameterServer() << lat << lon << radius << pose;
+    parameterServer() << lat << lon << radius;
 
     lat.registerChangeCallback([&](float value) {
-      nav().pos(Vec3d(radius.get() * cos(value / 180.0 * M_PI) *
+      nav().pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
                           sin(lon.get() / 180.0 * M_PI),
                       radius.get() * sin(value / 180.0 * M_PI),
                       -radius.get() * cos(value / 180.0 * M_PI) *
@@ -82,7 +99,7 @@ public:
     });
 
     lon.registerChangeCallback([&](float value) {
-      nav().pos(Vec3d(radius.get() * cos(lat.get() / 180.0 * M_PI) *
+      nav().pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
                           sin(value / 180.0 * M_PI),
                       radius.get() * sin(lat.get() / 180.0 * M_PI),
                       -radius.get() * cos(lat.get() / 180.0 * M_PI) *
@@ -91,7 +108,7 @@ public:
     });
 
     radius.registerChangeCallback([&](float value) {
-      nav().pos(Vec3d(value * cos(lat.get() / 180.0 * M_PI) *
+      nav().pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
                           sin(lon.get() / 180.0 * M_PI),
                       value * sin(lat.get() / 180.0 * M_PI),
                       -value * cos(lat.get() / 180.0 * M_PI) *
@@ -111,22 +128,25 @@ public:
                                        (morphProgress / morphDuration));
         lon.set(targetGeoLoc.lon + (sourceGeoLoc.lon - targetGeoLoc.lon) *
                                        (morphProgress / morphDuration));
-        radius.set(targetGeoLoc.radius +
-                   (sourceGeoLoc.radius - targetGeoLoc.radius) *
-                       (morphProgress / morphDuration));
+        if (morphProgress + 1.5 > morphDuration) {
+          radius.set(10.0 + (sourceGeoLoc.radius - 10.0) *
+                                (morphProgress - morphDuration + 1.5) / 1.5);
+        } else {
+          radius.set(targetGeoLoc.radius +
+                     (10.0 - targetGeoLoc.radius) *
+                         (morphProgress / (morphDuration - 1.5)));
+        }
       } else {
         Vec3d pos = nav().pos();
         radius.setNoCalls(pos.mag());
         pos.normalize();
         lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
-        lon.setNoCalls(atan2(pos.x, -pos.z) * 180.0 / M_PI);
-        // if (radius.get() > 2.0)
-        // nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
+        lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
       }
 
-      pose.set(nav());
+      state().global_pose.set(nav());
     } else {
-      nav().set(pose.get());
+      nav().set(state().global_pose);
     }
   }
 
@@ -158,7 +178,8 @@ public:
   }
 
   bool onKeyDown(const Keyboard &k) override {
-    if (k.key() == '1') {
+    switch (k.key()) {
+    case '1':
       sourceGeoLoc.lat = lat.get();
       sourceGeoLoc.lon = lon.get();
       sourceGeoLoc.radius = radius.get();
@@ -167,8 +188,36 @@ public:
       targetGeoLoc.radius = 2.2;
       morphProgress = morphDuration;
       return true;
+    case '2':
+      sourceGeoLoc.lat = lat.get();
+      sourceGeoLoc.lon = lon.get();
+      sourceGeoLoc.radius = radius.get();
+      targetGeoLoc.lat = 54.40820774011447;
+      targetGeoLoc.lon = 12.593582740321027;
+      targetGeoLoc.radius = 2.2;
+      morphProgress = morphDuration;
+      return true;
+    case '3':
+      sourceGeoLoc.lat = lat.get();
+      sourceGeoLoc.lon = lon.get();
+      sourceGeoLoc.radius = radius.get();
+      targetGeoLoc.lat = 53.91580380807132;
+      targetGeoLoc.lon = 9.531183185073399;
+      targetGeoLoc.radius = 2.2;
+      morphProgress = morphDuration;
+      return true;
+    case '4':
+      sourceGeoLoc.lat = lat.get();
+      sourceGeoLoc.lon = lon.get();
+      sourceGeoLoc.radius = radius.get();
+      targetGeoLoc.lat = 53.78527983917765;
+      targetGeoLoc.lon = 9.409205631903566;
+      targetGeoLoc.radius = 2.2;
+      morphProgress = morphDuration;
+      return true;
+    default:
+      return false;
     }
-    return false;
   }
 };
 
