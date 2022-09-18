@@ -224,6 +224,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
 int main() {
   SensoriumApp app;
-  app.dimensions(1920, 1080);
+  app.dimensions(1200, 800);
   app.start();
 }
