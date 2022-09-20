@@ -30,11 +30,11 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   GeoLoc sourceGeoLoc, targetGeoLoc;
 
   double morphProgress{0.0};
-  double morphDuration{6.0};
-  const double defaultMorph{6.0};
+  double morphDuration{5.0};
+  const double defaultMorph{5.0};
   float hoverHeight{10.f};
-  double hoverDuration{3.0};
-  const double defaultHover{3.0};
+  double hoverDuration{2.5};
+  const double defaultHover{2.5};
 
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
@@ -210,6 +210,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       targetGeoLoc.lon = 9.950943100405375;
       targetGeoLoc.radius = 2.2;
       morphProgress = morphDuration;
+      hoverDuration = 0;
       return true;
     case '2':
       sourceGeoLoc.lat = lat.get();
