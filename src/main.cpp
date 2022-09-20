@@ -30,8 +30,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   GeoLoc sourceGeoLoc, targetGeoLoc;
 
   double morphProgress{0.0};
-  double morphDuration{7.0};
-  const double defaultMorph{7.0};
+  double morphDuration{6.0};
+  const double defaultMorph{6.0};
   float hoverHeight{10.f};
   double hoverDuration{3.0};
   const double defaultHover{3.0};
@@ -244,8 +244,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       sourceGeoLoc.radius = radius.get();
       targetGeoLoc.lat = 0;
       targetGeoLoc.lon = 150;
-      targetGeoLoc.radius = 40;
-      morphDuration = 12.0;
+      targetGeoLoc.radius = 30;
+      morphDuration = 7.0;
       morphProgress = morphDuration;
       hoverDuration = 0;
       return true;
