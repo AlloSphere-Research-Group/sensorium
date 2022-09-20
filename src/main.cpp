@@ -259,6 +259,16 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       morphProgress = morphDuration;
       hoverDuration = 0;
       return true;
+    case 'r':
+      sourceGeoLoc.lat = lat.get();
+      sourceGeoLoc.lon = lon.get();
+      sourceGeoLoc.radius = radius.get();
+      targetGeoLoc.lat = 0;
+      targetGeoLoc.lon = 0;
+      targetGeoLoc.radius = 5;
+      morphProgress = morphDuration;
+      hoverDuration = 0;
+      return true;
     default:
       return false;
     }
