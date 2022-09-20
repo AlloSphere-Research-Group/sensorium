@@ -254,7 +254,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       sourceGeoLoc.lon = lon.get();
       sourceGeoLoc.radius = radius.get();
       targetGeoLoc.lat = 0;
-      targetGeoLoc.lon = 150;
+      targetGeoLoc.lon = -80;
       targetGeoLoc.radius = 0.01;
       morphProgress = morphDuration;
       hoverDuration = 0;
