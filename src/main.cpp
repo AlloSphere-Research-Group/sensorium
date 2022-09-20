@@ -67,11 +67,14 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       dataPath = "C:/Users/kenny/data/sensorium/";
     }
 
-    sphereImage = Image(dataPath + "blue_marble.jpg");
+    // visible earth, nasa
+    sphereImage = Image(dataPath + "blue_marble_brighter.jpg");
     if (sphereImage.array().size() == 0) {
       std::cerr << "failed to load sphere image" << std::endl;
     }
-    skyImage = Image(dataPath + "milkyway.png");
+
+    // paulbourke.net
+    skyImage = Image(dataPath + "Stellarium3.jpg");
     if (skyImage.array().size() == 0) {
       std::cerr << "failed to load background image" << std::endl;
     }
