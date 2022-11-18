@@ -1,11 +1,14 @@
 #include <iostream>
-
+#include <string.h>
 #include "al/app/al_DistributedApp.hpp"
 #include "al/app/al_GUIDomain.hpp"
 #include "al/graphics/al_Image.hpp"
 #include "al_ext/statedistribution/al_CuttleboneDomain.hpp"
+#include "al/graphics/al_Shapes.hpp"
+#include "al/graphics/al_Light.hpp"
 
 using namespace al;
+using namespace std;
 
 struct State {
   Pose global_pose;
@@ -26,8 +29,13 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
+  Parameter lux{"Light", 1, 0, 1};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
+  static const int years = 7;
+  static const int stressors = 2;  
+  Image oceanData[years][stressors];
+  VAOMesh pic[years][stressors];
 
   double morphProgress{0.0};
   double morphDuration{5.0};
@@ -35,6 +43,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   float hoverHeight{10.f};
   double hoverDuration{2.5};
   const double defaultHover{2.5};
+  Light light;
 
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
@@ -66,7 +75,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
         dataPath = "/Volumes/Data/Sensorium/";
       }
     } else {
-      dataPath = "C:/Users/kenny/data/sensorium/";
+      // dataPath = "C:/Users/kenny/data/sensorium/";
+      dataPath = "data/";
     }
 
     // visible earth, nasa
@@ -126,6 +136,45 @@ struct SensoriumApp : public DistributedAppWithState<State> {
                           cos(lon.get() / 180.0 * M_PI)));
       nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
+
+    // Bring ocean data (image)
+    // SST
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/sst/sst_05_" << d + 2003 << "_equi.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      std::strcpy(filename, ostr.str().c_str());
+      oceanData[d][0] = Image(filename);
+      if (oceanData[d][0].array().size() == 0)
+      {
+        std::cout << "failed to load image" << std::endl;
+        exit(1);
+      }
+      std::cout << "loaded image size: " << oceanData[d][0].width() << ", "
+           << oceanData[d][0].height() << std::endl;
+      pic[d][0].primitive(Mesh::POINTS);
+      // pic[d][1].update();
+    }
+
+    // Nutrients
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << 2003 << "_equi.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][1] = Image(filename);
+      if (oceanData[d][1].array().size() == 0)
+      {
+        std::cout << "failed to load image" << std::endl;
+        exit(1);
+      }
+      std::cout << "loaded image size: " << oceanData[d][1].width() << ", "
+           << oceanData[d][1].height() << std::endl;
+      pic[d][1].primitive(Mesh::POINTS);
+      // pic[d][1].update();
+    }
   }
 
   void onAnimate(double dt) override {
@@ -166,6 +215,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
         lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
         lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
       }
+      // Set light position
+      light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
+      Light::globalAmbient({lux, lux, lux});
 
       state().global_pose.set(nav());
     } else {
