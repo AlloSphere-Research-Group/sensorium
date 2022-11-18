@@ -32,15 +32,15 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
-  Parameter lux{"Light", 0.9, 0, 1};
+  Parameter lux{"Light", 0.6, 0, 1};
   Parameter year{"Year", 2003, 2003, 2009};
   GeoLoc sourceGeoLoc, targetGeoLoc;
   static const int years = 7;
-  static const int stressors = 3;
+  static const int stressors = 4;
   Image oceanData[years][stressors];
   // VAOMesh pic[years][stressors];
   Mesh pic[years][stressors];
-  bool swtch[stressors];
+  bool swtch[stressors]{false};
   bool molph{false};
   double morphProgress{0.0};
   double morphDuration{5.0};
@@ -223,6 +223,29 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
+
+    // Sea level rise
+    stress = 3;
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/slr/slr_impact_5_" << d + 2003 << "_equi.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][stress] = Image(filename);
+      if (oceanData[d][stress].array().size() == 0)
+      {
+        std::cout << "failed to load image" << std::endl;
+        exit(1);
+      }
+      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
+                << oceanData[d][stress].height() << std::endl;
+      pic[d][stress].primitive(Mesh::POINTS);
+      // pic[d][1].update();
+    }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
+
     // Assign color for data
     point_dist = 2.005;
     for (int p = 0; p < stressors; p++)
@@ -252,11 +275,16 @@ struct SensoriumApp : public DistributedAppWithState<State>
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // pic[d].color(HSV(pixel.r/ 100, 1, 1));
               // pic[d].color(HSV( 1 - pixel.r/ 100, 0.8-pixel.r/ 30, 0.6 + atan(pixel.r/ 240)));
-
               // pic[d].color(HSV( 0.6 * (pixel.r/ 100), 0.8-pixel.r/ 300, 0.6 + atan(pixel.r/ 300)));
-              pic[d][p].color(HSV(pixel.r/120+ 0.6-p*0.3, 1-pixel.r/120, 1-pixel.r/120));
-              // pic[d].color(HSV( 0.6 * sin(pixel.r/ 100), 0.8-pixel.r/ 300, 0.6 + atan(pixel.r/ 300)));
-              // pic[d].color(HSV( pixel.r/10, 0.6 + pixel.r / 240, 0.6 + pixel.r / 240));
+              if(p==0) // sst color
+                pic[d][p].color(HSV( 0.5+(pixel.r/ 60), 0.5+pixel.r/ 60, 0.6 + atan(pixel.r/ 300)));
+              else if (p==1) // nutrient pollution color
+                pic[d][p].color(HSV(0.25-pixel.r/130, 0.9+pixel.r/90, 0.9+pixel.r/90));
+                // pic[d][p].color(HSV(1/3, 0.6+pixel.r/90, 0.6+pixel.r/90));
+              else if (p==2) // shipping color
+                pic[d][p].color(HSV(0.1 - pixel.r/100, 0.6 + pixel.r/100, 0.6+pixel.r/60));
+              else if (p==3) // shipping color
+                pic[d][p].color(HSV(0.66 + pixel.r/200, 0.6 + pixel.r/100, 0.6+pixel.r/60));
               // cout << pixel.r << atan(pixel.r) << endl;
             }
           }
@@ -344,6 +372,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     g.blending(true);
     g.blendTrans();
 
+    // sky
     g.pushMatrix();
 
     skyTex.bind();
@@ -353,6 +382,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     g.popMatrix();
 
+    // sphere
     g.pushMatrix();
 
     sphereTex.bind();
@@ -363,13 +393,16 @@ struct SensoriumApp : public DistributedAppWithState<State>
     sphereTex.unbind();
 
     g.popMatrix();
-
     // Draw data
     for (int j = 0; j < stressors; j++){
       if(swtch[j]){
         g.meshColor();
         g.pushMatrix();
-        g.pointSize(50/nav().pos().magSqr());
+        float ps = 50/nav().pos().magSqr();
+        if (ps > 3){
+          ps = 3;
+        }
+        g.pointSize(ps);
         g.draw(pic[(int)year - 2003][j]); // only needed if we go inside the earth
         g.popMatrix();
       }
@@ -386,7 +419,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       sourceGeoLoc.radius = radius.get();
       targetGeoLoc.lat = 53.54123998879464;
       targetGeoLoc.lon = 9.950943100405375;
-      targetGeoLoc.radius = 2.2;
+      targetGeoLoc.radius = 3.2;
       morphDuration = 4.0;
       morphProgress = morphDuration;
       hoverDuration = 0;
@@ -397,7 +430,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       sourceGeoLoc.radius = radius.get();
       targetGeoLoc.lat = 54.40820774011447;
       targetGeoLoc.lon = 12.593582740321027;
-      targetGeoLoc.radius = 2.2;
+      targetGeoLoc.radius = 3.2;
       morphProgress = morphDuration;
       return true;
     case '3':
@@ -406,7 +439,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       sourceGeoLoc.radius = radius.get();
       targetGeoLoc.lat = 53.91580380807132;
       targetGeoLoc.lon = 9.531183185073399;
-      targetGeoLoc.radius = 2.2;
+      targetGeoLoc.radius = 3.2;
       morphProgress = morphDuration;
       return true;
     case '4':
@@ -415,7 +448,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       sourceGeoLoc.radius = radius.get();
       targetGeoLoc.lat = 53.78527983917765;
       targetGeoLoc.lon = 9.409205631903566;
-      targetGeoLoc.radius = 2.2;
+      targetGeoLoc.radius = 3.2;
       morphProgress = morphDuration;
       return true;
     case '5':
@@ -458,7 +491,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     case 'o':
       swtch[2] = !swtch[2];
       return true;
-    case 'p':
+    case 'j':
       swtch[3] = !swtch[3];
       return true;
     case '9':
