@@ -10,17 +10,20 @@
 using namespace al;
 using namespace std;
 
-struct State {
+struct State
+{
   Pose global_pose;
 };
 
-struct GeoLoc {
+struct GeoLoc
+{
   float lat;
   float lon;
   float radius;
 };
 
-struct SensoriumApp : public DistributedAppWithState<State> {
+struct SensoriumApp : public DistributedAppWithState<State>
+{
   VAOMesh skyMesh, sphereMesh;
   Image skyImage, sphereImage;
   Texture skyTex, sphereTex;
@@ -29,14 +32,16 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
-  Parameter lux{"Light", 1, 0, 1};
-
+  Parameter lux{"Light", 0.9, 0, 1};
+  Parameter year{"Year", 2003, 2003, 2009};
   GeoLoc sourceGeoLoc, targetGeoLoc;
   static const int years = 7;
-  static const int stressors = 2;  
+  static const int stressors = 3;
   Image oceanData[years][stressors];
-  VAOMesh pic[years][stressors];
-
+  // VAOMesh pic[years][stressors];
+  Mesh pic[years][stressors];
+  bool swtch[stressors];
+  bool molph{false};
   double morphProgress{0.0};
   double morphDuration{5.0};
   const double defaultMorph{5.0};
@@ -44,18 +49,24 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   double hoverDuration{2.5};
   const double defaultHover{2.5};
   Light light;
+  float earth_radius = 5;
+  float point_dist = 1.01 * earth_radius;
+  int data_W[stressors], data_H[stressors];
 
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
-  void onInit() override {
+  void onInit() override
+  {
     cuttleboneDomain = CuttleboneDomain<State>::enableCuttlebone(this);
-    if (!cuttleboneDomain) {
+    if (!cuttleboneDomain)
+    {
       std::cerr << "ERROR: Could not start Cuttlebone" << std::endl;
       quit();
     }
   }
 
-  void onCreate() override {
+  void onCreate() override
+  {
     lens().fovy(45).eyeSep(0);
     nav().pos(0, 0, -5);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
@@ -68,26 +79,34 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
     std::string dataPath;
 
-    if (sphere::isSphereMachine()) {
-      if (sphere::isRendererMachine()) {
+    if (sphere::isSphereMachine())
+    {
+      if (sphere::isRendererMachine())
+      {
         dataPath = "/data/Sensorium/";
-      } else {
+      }
+      else
+      {
         dataPath = "/Volumes/Data/Sensorium/";
       }
-    } else {
+    }
+    else
+    {
       // dataPath = "C:/Users/kenny/data/sensorium/";
       dataPath = "data/";
     }
 
     // visible earth, nasa
     sphereImage = Image(dataPath + "blue_marble_brighter.jpg");
-    if (sphereImage.array().size() == 0) {
+    if (sphereImage.array().size() == 0)
+    {
       std::cerr << "failed to load sphere image" << std::endl;
     }
 
     // paulbourke.net
     skyImage = Image(dataPath + "Stellarium3.jpg");
-    if (skyImage.array().size() == 0) {
+    if (skyImage.array().size() == 0)
+    {
       std::cerr << "failed to load background image" << std::endl;
     }
 
@@ -99,89 +118,162 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     skyTex.filter(Texture::LINEAR);
     skyTex.submit(skyImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
 
-    if (isPrimary()) {
+    if (isPrimary())
+    {
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      *gui << lat << lon << radius;
+      *gui << lat << lon << radius << lux << year;
     }
 
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
 
-    lat.registerChangeCallback([&](float value) {
+    lat.registerChangeCallback([&](float value)
+                               {
       nav().pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
                           sin(lon.get() / 180.0 * M_PI),
                       radius.get() * sin(value / 180.0 * M_PI),
                       -radius.get() * cos(value / 180.0 * M_PI) *
                           cos(lon.get() / 180.0 * M_PI)));
 
-      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
-    });
+      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
-    lon.registerChangeCallback([&](float value) {
+    lon.registerChangeCallback([&](float value)
+                               {
       nav().pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
                           sin(value / 180.0 * M_PI),
                       radius.get() * sin(lat.get() / 180.0 * M_PI),
                       -radius.get() * cos(lat.get() / 180.0 * M_PI) *
                           cos(value / 180.0 * M_PI)));
-      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
-    });
+      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
-    radius.registerChangeCallback([&](float value) {
+    radius.registerChangeCallback([&](float value)
+                                  {
       nav().pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
                           sin(lon.get() / 180.0 * M_PI),
                       value * sin(lat.get() / 180.0 * M_PI),
                       -value * cos(lat.get() / 180.0 * M_PI) *
                           cos(lon.get() / 180.0 * M_PI)));
-      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
-    });
+      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
     // Bring ocean data (image)
     // SST
+    int stress = 0;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
       ostr << "data/chi/sst/sst_05_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       std::strcpy(filename, ostr.str().c_str());
-      oceanData[d][0] = Image(filename);
-      if (oceanData[d][0].array().size() == 0)
+      oceanData[d][stress] = Image(filename);
+      if (oceanData[d][stress].array().size() == 0)
       {
         std::cout << "failed to load image" << std::endl;
         exit(1);
       }
-      std::cout << "loaded image size: " << oceanData[d][0].width() << ", "
-           << oceanData[d][0].height() << std::endl;
+      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
+                << oceanData[d][stress].height() << std::endl;
       pic[d][0].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+      // pic[d][0].update();
     }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
 
     // Nutrients
+    stress = 1;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
-      ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << 2003 << "_equi.png"; // ** change stressor
+      ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << d +2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][1] = Image(filename);
-      if (oceanData[d][1].array().size() == 0)
+      oceanData[d][stress] = Image(filename);
+      if (oceanData[d][stress].array().size() == 0)
       {
         std::cout << "failed to load image" << std::endl;
         exit(1);
       }
-      std::cout << "loaded image size: " << oceanData[d][1].width() << ", "
-           << oceanData[d][1].height() << std::endl;
-      pic[d][1].primitive(Mesh::POINTS);
+      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
+                << oceanData[d][stress].height() << std::endl;
+      pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
+    }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
+
+    // Shipping
+    stress = 2;
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/ship/ship_impact_10_" << d + 2003 << "_equi.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][stress] = Image(filename);
+      if (oceanData[d][stress].array().size() == 0)
+      {
+        std::cout << "failed to load image" << std::endl;
+        exit(1);
+      }
+      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
+                << oceanData[d][stress].height() << std::endl;
+      pic[d][stress].primitive(Mesh::POINTS);
+      // pic[d][1].update();
+    }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
+    // Assign color for data
+    point_dist = 2.005;
+    for (int p = 0; p < stressors; p++)
+    {
+      for (int d = 0; d < years; d++)
+      {
+        for (int row = 0; row < data_H[p]; row++)
+        {
+          double theta = row * M_PI / data_H[p];
+          double sinTheta = sin(theta);
+          double cosTheta = cos(theta);
+          for (int column = 0; column < data_W[p]; column++)
+          {
+            auto pixel = oceanData[d][p].at(column, data_H[p] - row - 1);
+
+            if (pixel.r > 0)
+            {
+              // {
+              double phi = column * M_2PI / data_W[p];
+              double sinPhi = sin(phi);
+              double cosPhi = cos(phi);
+
+              double x = sinPhi * sinTheta;
+              double y = -cosTheta;
+              double z = cosPhi * sinTheta;
+
+              pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // pic[d].color(HSV(pixel.r/ 100, 1, 1));
+              // pic[d].color(HSV( 1 - pixel.r/ 100, 0.8-pixel.r/ 30, 0.6 + atan(pixel.r/ 240)));
+
+              // pic[d].color(HSV( 0.6 * (pixel.r/ 100), 0.8-pixel.r/ 300, 0.6 + atan(pixel.r/ 300)));
+              pic[d][p].color(HSV(pixel.r/120+ 0.6-p*0.3, 1-pixel.r/120, 1-pixel.r/120));
+              // pic[d].color(HSV( 0.6 * sin(pixel.r/ 100), 0.8-pixel.r/ 300, 0.6 + atan(pixel.r/ 300)));
+              // pic[d].color(HSV( pixel.r/10, 0.6 + pixel.r / 240, 0.6 + pixel.r / 240));
+              // cout << pixel.r << atan(pixel.r) << endl;
+            }
+          }
+        }
+      }
     }
   }
 
-  void onAnimate(double dt) override {
-    if (isPrimary()) {
-      if (morphProgress > 0) {
+  void onAnimate(double dt) override
+  {
+    if (isPrimary())
+    {
+      if (morphProgress > 0)
+      {
         morphProgress -= dt;
-        if (morphProgress < 0) {
+        if (morphProgress < 0)
+        {
           morphProgress = 0;
           morphDuration = defaultMorph;
           hoverDuration = defaultHover;
@@ -191,24 +283,31 @@ struct SensoriumApp : public DistributedAppWithState<State> {
                                        (morphProgress / morphDuration));
         lon.set(targetGeoLoc.lon + (sourceGeoLoc.lon - targetGeoLoc.lon) *
                                        (morphProgress / morphDuration));
-        if (hoverDuration > 0) {
-          if (morphProgress + hoverDuration > morphDuration) {
+        if (hoverDuration > 0)
+        {
+          if (morphProgress + hoverDuration > morphDuration)
+          {
             radius.set(hoverHeight +
                        (sourceGeoLoc.radius - hoverHeight) *
                            (morphProgress - morphDuration + hoverDuration) /
                            hoverDuration);
-          } else {
+          }
+          else
+          {
             radius.set(targetGeoLoc.radius +
                        (hoverHeight - targetGeoLoc.radius) *
                            (morphProgress / (morphDuration - hoverDuration)));
           }
-        } else {
+        }
+        else
+        {
           radius.set(targetGeoLoc.radius +
                      (sourceGeoLoc.radius - targetGeoLoc.radius) *
                          (morphProgress / morphDuration));
         }
-
-      } else {
+      }
+      else
+      {
         Vec3d pos = nav().pos();
         radius.setNoCalls(pos.mag());
         pos.normalize();
@@ -220,16 +319,30 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       Light::globalAmbient({lux, lux, lux});
 
       state().global_pose.set(nav());
-    } else {
+      if(molph){
+        year = year + dt;
+        if(year > 2009){
+          year = 2009;
+        }
+      }
+    }
+    else
+    {
       nav().set(state().global_pose);
     }
   }
 
-  void onDraw(Graphics &g) override {
+  void onDraw(Graphics &g) override
+  {
     g.clear(0, 0, 0);
     g.culling(true);
     // g.cullFaceFront();
+    g.lighting(true);
+    g.light(light);
     g.texture();
+    g.depthTesting(true);
+    g.blending(true);
+    g.blendTrans();
 
     g.pushMatrix();
 
@@ -250,10 +363,23 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     sphereTex.unbind();
 
     g.popMatrix();
+
+    // Draw data
+    for (int j = 0; j < stressors; j++){
+      if(swtch[j]){
+        g.meshColor();
+        g.pushMatrix();
+        g.pointSize(50/nav().pos().magSqr());
+        g.draw(pic[(int)year - 2003][j]); // only needed if we go inside the earth
+        g.popMatrix();
+      }
+    }
   }
 
-  bool onKeyDown(const Keyboard &k) override {
-    switch (k.key()) {
+  bool onKeyDown(const Keyboard &k) override
+  {
+    switch (k.key())
+    {
     case '1':
       sourceGeoLoc.lat = lat.get();
       sourceGeoLoc.lon = lon.get();
@@ -323,13 +449,30 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       morphProgress = morphDuration;
       hoverDuration = 0;
       return true;
+    case 'u':
+      swtch[0] = !swtch[0];
+      return true;
+    case 'i':
+      swtch[1] = !swtch[1];
+      return true;
+    case 'o':
+      swtch[2] = !swtch[2];
+      return true;
+    case 'p':
+      swtch[3] = !swtch[3];
+      return true;
+    case '9':
+        molph = !molph;
+        year = 2003;
+      return true;
     default:
       return false;
     }
   }
 };
 
-int main() {
+int main()
+{
   SensoriumApp app;
   app.dimensions(1200, 800);
   app.start();
