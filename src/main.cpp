@@ -247,9 +247,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
     data_H[stress] = oceanData[0][stress].height();
 
     // Assign color for data
-    point_dist = 2.005;
     for (int p = 0; p < stressors; p++)
     {
+      point_dist = 2.005+ 0.001 * p;
       for (int d = 0; d < years; d++)
       {
         for (int row = 0; row < data_H[p]; row++)
@@ -283,7 +283,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
                 // pic[d][p].color(HSV(1/3, 0.6+pixel.r/90, 0.6+pixel.r/90));
               else if (p==2) // shipping color
                 pic[d][p].color(HSV(0.1 - pixel.r/100, 0.6 + pixel.r/100, 0.6+pixel.r/60));
-              else if (p==3) // shipping color
+              else if (p==3) // sea level rise color
                 pic[d][p].color(HSV(0.66 + pixel.r/200, 0.6 + pixel.r/100, 0.6+pixel.r/60));
               // cout << pixel.r << atan(pixel.r) << endl;
             }
