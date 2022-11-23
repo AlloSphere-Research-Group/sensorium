@@ -9,8 +9,8 @@
 build
 
 *.log
-*.png
-*.PNG
+
+
 *.gif
 *.GIF
 *.jpg
