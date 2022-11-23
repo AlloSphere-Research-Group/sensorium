@@ -34,9 +34,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
   Parameter lux{"Light", 0.6, 0, 1};
   Parameter year{"Year", 2003, 2003, 2013};
+  Parameter trans{"Trans", 0.99, 0.1, 1};
   GeoLoc sourceGeoLoc, targetGeoLoc;
   static const int years = 11; // Total number of years (2003~2013)
-  static const int stressors = 8; // Total number of stressors
+  static const int stressors = 9; // Total number of stressors
   Image oceanData[years][stressors];
   // VAOMesh pic[years][stressors];
   Mesh pic[years][stressors];
@@ -52,7 +53,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
   float earth_radius = 5;
   float point_dist = 1.01 * earth_radius;
   int data_W[stressors], data_H[stressors];
-
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
   void onInit() override
@@ -123,7 +123,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      *gui << lat << lon << radius << lux << year;
+      *gui << lat << lon << radius << lux << year << trans;
     }
 
     // enable if parameter needs to be shared
@@ -289,8 +289,30 @@ struct SensoriumApp : public DistributedAppWithState<State>
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
-    // 6. Fishing pelagic low
+    // 6. Fishing demersal high
     stress = 6;
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/fish/fdh_10_" << d + 2003 << "_impact.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][stress] = Image(filename);
+      if (oceanData[d][stress].array().size() == 0)
+      {
+        std::cout << "failed to load image" << std::endl;
+        exit(1);
+      }
+      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
+                << oceanData[d][stress].height() << std::endl;
+      pic[d][stress].primitive(Mesh::POINTS);
+      // pic[d][1].update();
+    }    
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
+
+    // 6. Fishing pelagic low
+    stress = 7;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -312,7 +334,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     data_H[stress] = oceanData[0][stress].height();
 
     // 7. Fishing pelagic high
-    stress = 7;
+    stress = 8;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -369,17 +391,19 @@ struct SensoriumApp : public DistributedAppWithState<State>
                 pic[d][p].color(HSV(0.25-pixel.r/130, 0.9+pixel.r/90, 0.9+pixel.r/90));
                 // pic[d][p].color(HSV(1/3, 0.6+pixel.r/90, 0.6+pixel.r/90));
               else if (p==2) // shipping color
-                pic[d][p].color(HSV(0.1 - pixel.r/100, 0.6 + pixel.r/100, 0.6+pixel.r/60));
+                pic[d][p].color(HSV(1 - log(pixel.r/30.+0.1), 0.6 + pixel.r/100, 0.6+pixel.r/60));
               else if (p==3) // sea level rise color
                 pic[d][p].color(HSV(0.66 + pixel.r/200, 0.6 + pixel.r/100, 0.6+pixel.r/60));
-              else if (p==4) // nutrient pollution color
-                pic[d][p].color(HSV(0.25-pixel.r/130, 0.9+pixel.r/90, 0.9+pixel.r/90));
-              else if (p==5) // shipping color
-                pic[d][p].color(HSV(0.1 - pixel.r/100, 0.6 + pixel.r/100, 0.6+pixel.r/60));
-              else if (p==6) // sea level rise color
-                pic[d][p].color(HSV(0.66 + pixel.r/200, 0.6 + pixel.r/100, 0.6+pixel.r/60));
-              else if (p==7) // sea level rise color
-                pic[d][p].color(HSV(0.66 + pixel.r/200, 0.6 + pixel.r/100, 0.6+pixel.r/60));
+              else if (p==4) // Ocean Acidification
+                pic[d][p].color(HSV(log(pixel.r/30.+0.4), 0.9+pixel.r/90, 0.9+pixel.r/90));
+              else if (p==5) // Fishing demersal low
+                pic[d][p].color(HSV(log(pixel.r/30.+0.1), 0.9, 1));
+              else if (p==6) // Fishing demersal high
+                pic[d][p].color(HSV(log(pixel.r/30.+0.2),0.9, 1));
+              else if (p==7) // Fishing pelagic low
+                pic[d][p].color(HSV(log(pixel.r/30.+0.3), 0.9, 1));
+              else if (p==8) // Fishing pelagic high
+                pic[d][p].color(HSV(log(pixel.r/30.+0.4), 0.9, 1));
               // cout << pixel.r << atan(pixel.r) << endl;
             }
           }
@@ -457,7 +481,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
   void onDraw(Graphics &g) override
   {
-    g.clear(0, 0, 0);
+    g.clear(0, 0, 0); 
     g.culling(true);
     // g.cullFaceFront();
     g.lighting(true);
@@ -469,7 +493,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // sky
     g.pushMatrix();
-
     skyTex.bind();
     g.translate(nav().pos());
     g.draw(skyMesh);
@@ -479,7 +502,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // sphere
     g.pushMatrix();
-
     sphereTex.bind();
     g.cullFaceFront();
     g.draw(sphereMesh); // only needed if we go inside the earth
@@ -488,14 +510,16 @@ struct SensoriumApp : public DistributedAppWithState<State>
     sphereTex.unbind();
 
     g.popMatrix();
+
     // Draw data
     for (int j = 0; j < stressors; j++){
       if(swtch[j]){
         g.meshColor();
+        g.blendTrans();
         g.pushMatrix();
         float ps = 50/nav().pos().magSqr();
-        if (ps > 3){
-          ps = 3;
+        if (ps > 5){
+          ps = 5;
         }
         g.pointSize(ps);
         g.draw(pic[(int)year - 2003][j]); // only needed if we go inside the earth
@@ -599,6 +623,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       swtch[6] = !swtch[6];
       return true;
     case ',':
+      swtch[7] = !swtch[7];
+      return true;
+    case '.':
       swtch[7] = !swtch[7];
       return true;
     case '9':
