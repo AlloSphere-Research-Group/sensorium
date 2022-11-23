@@ -9,10 +9,15 @@
 
 using namespace al;
 using namespace std;
+static const int years = 11;    // Total number of years (2003~2013)
+static const int stressors = 9; // Total number of stressors
 
 struct State
 {
   Pose global_pose;
+  bool swtch[stressors]{false};
+  bool molph{false};
+  float lux;
 };
 
 struct GeoLoc
@@ -27,7 +32,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
   VAOMesh skyMesh, sphereMesh;
   Image skyImage, sphereImage;
   Texture skyTex, sphereTex;
-
   ControlGUI *gui;
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
@@ -36,13 +40,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter year{"Year", 2003, 2003, 2013};
   Parameter trans{"Trans", 0.99, 0.1, 1};
   GeoLoc sourceGeoLoc, targetGeoLoc;
-  static const int years = 11; // Total number of years (2003~2013)
-  static const int stressors = 9; // Total number of stressors
   Image oceanData[years][stressors];
   // VAOMesh pic[years][stressors];
-  Mesh pic[years][stressors];
-  bool swtch[stressors]{false};
-  bool molph{false};
   double morphProgress{0.0};
   double morphDuration{5.0};
   const double defaultMorph{5.0};
@@ -53,6 +52,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   float earth_radius = 5;
   float point_dist = 1.01 * earth_radius;
   int data_W[stressors], data_H[stressors];
+  Mesh pic[years][stressors];
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
   void onInit() override
@@ -125,37 +125,39 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
       *gui << lat << lon << radius << lux << year << trans;
     }
-
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
 
     lat.registerChangeCallback([&](float value)
                                {
-      nav().pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
-                          sin(lon.get() / 180.0 * M_PI),
-                      radius.get() * sin(value / 180.0 * M_PI),
-                      -radius.get() * cos(value / 180.0 * M_PI) *
-                          cos(lon.get() / 180.0 * M_PI)));
+                                 nav().pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
+                                                     sin(lon.get() / 180.0 * M_PI),
+                                                 radius.get() * sin(value / 180.0 * M_PI),
+                                                 -radius.get() * cos(value / 180.0 * M_PI) *
+                                                     cos(lon.get() / 180.0 * M_PI)));
 
-      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
+                                 nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
+                               });
 
     lon.registerChangeCallback([&](float value)
                                {
-      nav().pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
-                          sin(value / 180.0 * M_PI),
-                      radius.get() * sin(lat.get() / 180.0 * M_PI),
-                      -radius.get() * cos(lat.get() / 180.0 * M_PI) *
-                          cos(value / 180.0 * M_PI)));
-      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
+                                 nav().pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
+                                                     sin(value / 180.0 * M_PI),
+                                                 radius.get() * sin(lat.get() / 180.0 * M_PI),
+                                                 -radius.get() * cos(lat.get() / 180.0 * M_PI) *
+                                                     cos(value / 180.0 * M_PI)));
+                                 nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
+                               });
 
     radius.registerChangeCallback([&](float value)
                                   {
-      nav().pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
-                          sin(lon.get() / 180.0 * M_PI),
-                      value * sin(lat.get() / 180.0 * M_PI),
-                      -value * cos(lat.get() / 180.0 * M_PI) *
-                          cos(lon.get() / 180.0 * M_PI)));
-      nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
+                                    nav().pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
+                                                        sin(lon.get() / 180.0 * M_PI),
+                                                    value * sin(lat.get() / 180.0 * M_PI),
+                                                    -value * cos(lat.get() / 180.0 * M_PI) *
+                                                        cos(lon.get() / 180.0 * M_PI)));
+                                    nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
+                                  });
 
     // Bring ocean data (image)
     // 0. SST
@@ -181,7 +183,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
-      ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << d +2003 << "_equi.png"; // ** change stressor
+      ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
@@ -219,7 +221,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
-    } 
+    }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
     // 4. Ocean Acidification
@@ -234,7 +236,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
-    }    
+    }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
@@ -250,7 +252,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
-    }    
+    }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
@@ -266,7 +268,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
-    }    
+    }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
@@ -282,7 +284,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
-    }    
+    }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
@@ -298,7 +300,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
-    }    
+    }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
     std::cout << "Loaded CHI data" << std::endl;
@@ -306,7 +308,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     // Assign color for data
     for (int p = 0; p < stressors; p++)
     {
-      point_dist = 2.005+ 0.001 * p;
+      point_dist = 2.005 + 0.001 * p;
       for (int d = 0; d < years; d++)
       {
         for (int row = 0; row < data_H[p]; row++)
@@ -331,26 +333,26 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
-              if(p==0) // sst color
-                pic[d][p].color(HSV(0.55+log(pixel.r/70.+1), 0.5+pixel.r/ 60, 0.6 + atan(pixel.r/ 300)));
-              else if (p==1) // nutrient pollution color
-                pic[d][p].color(HSV(0.3 - log(pixel.r/60.+1), 0.9+pixel.r/90, 0.9+pixel.r/90));
-              else if (p==2) // shipping color
-                pic[d][p].color(HSV(1 - log(pixel.r/30.+1), 0.6 + pixel.r/100, 0.6+pixel.r/60));
-              else if (p==3) // sea level rise color
+              if (p == 0) // sst color
+                pic[d][p].color(HSV(0.55 + log(pixel.r / 70. + 1), 0.5 + pixel.r / 60, 0.6 + atan(pixel.r / 300)));
+              else if (p == 1) // nutrient pollution color
+                pic[d][p].color(HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
+              else if (p == 2) // shipping color
+                pic[d][p].color(HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60));
+              else if (p == 3) // sea level rise color
                 // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
-                pic[d][p].color(HSV(0.6 + 0.2*log(pixel.r/100. + 1) , 0.6+log(pixel.r/60.+1), 0.6+log(pixel.r/60.+1)));
-              else if (p==4) // Ocean Acidification
-                // pic[d][p].color(HSV(0.7-log(pixel.r/100.+0.1), 0.6+log(pixel.r/70.+0.1), 0.8+log(pixel.r/200.+0.1)));
-                pic[d][p].color(HSV(0.7-0.6*log(pixel.r/100.+1), 0.5+log(pixel.r/100.+1), 1));
-              else if (p==5) // Fishing demersal low
-                pic[d][p].color(HSV(log(pixel.r/90.+1), 0.9, 1));
-              else if (p==6) // Fishing demersal high
-                pic[d][p].color(HSV(log(pixel.r/90.+1),0.9, 1));
-              else if (p==7) // Fishing pelagic low
-                pic[d][p].color(HSV(log(pixel.r/90.+1), 0.9, 1));
-              else if (p==8) // Fishing pelagic high
-                pic[d][p].color(HSV(log(pixel.r/90.+1), 0.9, 1));
+                pic[d][p].color(HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1)));
+              else if (p == 4) // Ocean Acidification
+                // pic[d][p].color(HSV(0.7-log(pixel.r/100.+ 0.1), 0.6+log(pixel.r/100.+0.1), 0.8+log(pixel.r/200.+1)));
+                pic[d][p].color(HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1));
+              else if (p == 5) // Fishing demersal low
+                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+              else if (p == 6) // Fishing demersal high
+                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+              else if (p == 7) // Fishing pelagic low
+                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+              else if (p == 8) // Fishing pelagic high
+                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
             }
           }
         }
@@ -362,7 +364,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   {
     if (isPrimary())
     {
-      Vec3f point_you_want_to_see = Vec3f(0,0,0); // examplary point that you want to see
+      Vec3f point_you_want_to_see = Vec3f(0, 0, 0); // examplary point that you want to see
       nav().faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.7);
       if (morphProgress > 0)
       {
@@ -412,24 +414,28 @@ struct SensoriumApp : public DistributedAppWithState<State>
       // Set light position
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
       Light::globalAmbient({lux, lux, lux});
-
-      state().global_pose.set(nav());
-      if(molph){
-        year = year + 3*dt;
-        if(year > 2013){
+      state().lux = lux;
+      if (state().molph)
+      {
+        year = year + 3 * dt;
+        if (year > 2013)
+        {
           year = 2013;
         }
       }
-    }
-    else
+      state().global_pose.set(nav());
+    }    // prim end
+    else // renderer
     {
       nav().set(state().global_pose);
+      light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
+      Light::globalAmbient({state().lux, state().lux, state().lux});
     }
   }
 
   void onDraw(Graphics &g) override
   {
-    g.clear(0, 0, 0); 
+    g.clear(0, 0, 0);
     g.culling(true);
     // g.cullFaceFront();
     g.lighting(true);
@@ -460,13 +466,16 @@ struct SensoriumApp : public DistributedAppWithState<State>
     g.popMatrix();
 
     // Draw data
-    for (int j = 0; j < stressors; j++){
-      if(swtch[j]){
+    for (int j = 0; j < stressors; j++)
+    {
+      if (state().swtch[j])
+      {
         g.meshColor();
         g.blendTrans();
         g.pushMatrix();
-        float ps = 50/nav().pos().magSqr();
-        if (ps > 5){
+        float ps = 50 / nav().pos().magSqr();
+        if (ps > 5)
+        {
           ps = 5;
         }
         g.pointSize(ps);
@@ -474,7 +483,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
         g.popMatrix();
       }
     }
-
   }
 
   bool onKeyDown(const Keyboard &k) override
@@ -551,35 +559,35 @@ struct SensoriumApp : public DistributedAppWithState<State>
       hoverDuration = 0;
       return true;
     case 'u':
-      swtch[0] = !swtch[0];
+      state().swtch[0] = !state().swtch[0];
       return true;
     case 'i':
-      swtch[1] = !swtch[1];
+      state().swtch[1] = !state().swtch[1];
       return true;
     case 'o':
-      swtch[2] = !swtch[2];
+      state().swtch[2] = !state().swtch[2];
       return true;
     case 'j':
-      swtch[3] = !swtch[3];
+      state().swtch[3] = !state().swtch[3];
       return true;
     case 'k':
-      swtch[4] = !swtch[4];
+      state().swtch[4] = !state().swtch[4];
       return true;
     case 'l':
-      swtch[5] = !swtch[5];
+      state().swtch[5] = !state().swtch[5];
       return true;
     case 'm':
-      swtch[6] = !swtch[6];
+      state().swtch[6] = !state().swtch[6];
       return true;
     case ',':
-      swtch[7] = !swtch[7];
+      state().swtch[7] = !state().swtch[7];
       return true;
     case '.':
-      swtch[7] = !swtch[7];
+      state().swtch[8] = !state().swtch[8];
       return true;
     case '9':
-        molph = !molph;
-        year = 2003;
+      state().molph = !state().molph;
+      year = 2003;
       return true;
     default:
       return false;
