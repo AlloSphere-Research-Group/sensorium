@@ -332,7 +332,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
               if(p==0) // sst color
-                pic[d][p].color(HSV(0.55+log(pixel.r/100.+1), 0.5+pixel.r/ 60, 0.6 + atan(pixel.r/ 300)));
+                pic[d][p].color(HSV(0.55+log(pixel.r/70.+1), 0.5+pixel.r/ 60, 0.6 + atan(pixel.r/ 300)));
               else if (p==1) // nutrient pollution color
                 pic[d][p].color(HSV(0.3 - log(pixel.r/60.+1), 0.9+pixel.r/90, 0.9+pixel.r/90));
               else if (p==2) // shipping color
@@ -362,6 +362,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
   {
     if (isPrimary())
     {
+      Vec3f point_you_want_to_see = Vec3f(0,0,0); // examplary point that you want to see
+      nav().faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.7);
       if (morphProgress > 0)
       {
         morphProgress -= dt;
@@ -413,7 +415,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
       state().global_pose.set(nav());
       if(molph){
-        year = year + dt;
+        year = year + 3*dt;
         if(year > 2013){
           year = 2013;
         }
@@ -472,6 +474,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
         g.popMatrix();
       }
     }
+
   }
 
   bool onKeyDown(const Keyboard &k) override
