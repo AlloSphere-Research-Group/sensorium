@@ -18,6 +18,7 @@ struct State
   bool swtch[stressors]{false};
   bool molph{false};
   float lux;
+  float year;
 };
 
 struct GeoLoc
@@ -41,7 +42,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter trans{"Trans", 0.99, 0.1, 1};
   GeoLoc sourceGeoLoc, targetGeoLoc;
   Image oceanData[years][stressors];
-  // VAOMesh pic[years][stressors];
   double morphProgress{0.0};
   double morphDuration{5.0};
   const double defaultMorph{5.0};
@@ -172,7 +172,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       std::strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][0].primitive(Mesh::POINTS);
-      // pic[d][0].update();
+      // pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -188,7 +188,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -204,7 +204,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -220,7 +220,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -235,7 +235,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -251,7 +251,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -267,7 +267,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -283,7 +283,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -299,7 +299,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-      // pic[d][1].update();
+ //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -334,7 +334,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
               if (p == 0) // sst color
-                pic[d][p].color(HSV(0.55 + log(pixel.r / 70. + 1), 0.5 + pixel.r / 60, 0.6 + atan(pixel.r / 300)));
+                pic[d][p].color(HSV(0.55 + log(pixel.r / 70. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300)));
               else if (p == 1) // nutrient pollution color
                 pic[d][p].color(HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
               else if (p == 2) // shipping color
@@ -424,6 +424,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
         }
       }
       state().global_pose.set(nav());
+      state().year = year;
     }    // prim end
     else // renderer
     {
@@ -479,7 +480,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
           ps = 5;
         }
         g.pointSize(ps);
-        g.draw(pic[(int)year - 2003][j]); // only needed if we go inside the earth
+        g.draw(pic[(int)state().year - 2003][j]); // only needed if we go inside the earth
         g.popMatrix();
       }
     }
@@ -587,7 +588,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       return true;
     case '9':
       state().molph = !state().molph;
-      year = 2003;
+      state().year = 2003;
       return true;
     default:
       return false;
