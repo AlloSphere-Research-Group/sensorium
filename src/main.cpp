@@ -159,6 +159,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // Bring ocean data (image)
     // 0. SST
+    std::cout << "Start loading CHI data " << std::endl;
+    std::cout << "Start loading 0. SST" << std::endl;
     int stress = 0;
     for (int d = 0; d < years; d++)
     {
@@ -167,13 +169,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       std::strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][0].primitive(Mesh::POINTS);
       // pic[d][0].update();
     }
@@ -182,6 +177,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // 1. Nutrients
     stress = 1;
+    std::cout << "Start loading 1. Nutrients" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -189,13 +185,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }
@@ -204,6 +193,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // 2. Shipping
     stress = 2;
+    std::cout << "Start loading 2. Shipping" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -211,13 +201,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }
@@ -226,6 +209,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // 3. Sea level rise
     stress = 3;
+    std::cout << "Start loading 3. Sea level rise" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -233,13 +217,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     } 
@@ -247,6 +224,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     data_H[stress] = oceanData[0][stress].height();
     // 4. Ocean Acidification
     stress = 4;
+    std::cout << "Start loading 4. Ocean Acidification " << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -254,13 +232,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }    
@@ -269,6 +240,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // 5. Fishing demersal low
     stress = 5;
+    std::cout << "Start loading 5. Fishing demersal low " << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -276,13 +248,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }    
@@ -291,6 +256,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // 6. Fishing demersal high
     stress = 6;
+    std::cout << "Start loading 6. Fishing demersal high " << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -298,21 +264,15 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }    
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
-    // 6. Fishing pelagic low
+    // 7. Fishing pelagic low
     stress = 7;
+    std::cout << "Start loading 7. Fishing pelagic low" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -320,21 +280,15 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }    
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
 
-    // 7. Fishing pelagic high
+    // 8. Fishing pelagic high
     stress = 8;
+    std::cout << "Start loading 8. Fishing pelagic high" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -342,18 +296,12 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
-      if (oceanData[d][stress].array().size() == 0)
-      {
-        std::cout << "failed to load image" << std::endl;
-        exit(1);
-      }
-      std::cout << "loaded image size: " << oceanData[d][stress].width() << ", "
-                << oceanData[d][stress].height() << std::endl;
       pic[d][stress].primitive(Mesh::POINTS);
       // pic[d][1].update();
     }    
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
+    std::cout << "Loaded CHI data" << std::endl;
 
     // Assign color for data
     for (int p = 0; p < stressors; p++)
@@ -382,29 +330,27 @@ struct SensoriumApp : public DistributedAppWithState<State>
               double z = cosPhi * sinTheta;
 
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
-              // pic[d].color(HSV(pixel.r/ 100, 1, 1));
-              // pic[d].color(HSV( 1 - pixel.r/ 100, 0.8-pixel.r/ 30, 0.6 + atan(pixel.r/ 240)));
-              // pic[d].color(HSV( 0.6 * (pixel.r/ 100), 0.8-pixel.r/ 300, 0.6 + atan(pixel.r/ 300)));
+              // init color config
               if(p==0) // sst color
-                pic[d][p].color(HSV( 0.5+(pixel.r/ 60), 0.5+pixel.r/ 60, 0.6 + atan(pixel.r/ 300)));
+                pic[d][p].color(HSV(0.55+log(pixel.r/100.+1), 0.5+pixel.r/ 60, 0.6 + atan(pixel.r/ 300)));
               else if (p==1) // nutrient pollution color
-                pic[d][p].color(HSV(0.25-pixel.r/130, 0.9+pixel.r/90, 0.9+pixel.r/90));
-                // pic[d][p].color(HSV(1/3, 0.6+pixel.r/90, 0.6+pixel.r/90));
+                pic[d][p].color(HSV(0.3 - log(pixel.r/60.+1), 0.9+pixel.r/90, 0.9+pixel.r/90));
               else if (p==2) // shipping color
-                pic[d][p].color(HSV(1 - log(pixel.r/30.+0.1), 0.6 + pixel.r/100, 0.6+pixel.r/60));
+                pic[d][p].color(HSV(1 - log(pixel.r/30.+1), 0.6 + pixel.r/100, 0.6+pixel.r/60));
               else if (p==3) // sea level rise color
-                pic[d][p].color(HSV(0.66 + pixel.r/200, 0.6 + pixel.r/100, 0.6+pixel.r/60));
+                // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
+                pic[d][p].color(HSV(0.6 + 0.2*log(pixel.r/100. + 1) , 0.6+log(pixel.r/60.+1), 0.6+log(pixel.r/60.+1)));
               else if (p==4) // Ocean Acidification
-                pic[d][p].color(HSV(log(pixel.r/30.+0.4), 0.9+pixel.r/90, 0.9+pixel.r/90));
+                // pic[d][p].color(HSV(0.7-log(pixel.r/100.+0.1), 0.6+log(pixel.r/70.+0.1), 0.8+log(pixel.r/200.+0.1)));
+                pic[d][p].color(HSV(0.7-0.6*log(pixel.r/100.+1), 0.5+log(pixel.r/100.+1), 1));
               else if (p==5) // Fishing demersal low
-                pic[d][p].color(HSV(log(pixel.r/30.+0.1), 0.9, 1));
+                pic[d][p].color(HSV(log(pixel.r/90.+1), 0.9, 1));
               else if (p==6) // Fishing demersal high
-                pic[d][p].color(HSV(log(pixel.r/30.+0.2),0.9, 1));
+                pic[d][p].color(HSV(log(pixel.r/90.+1),0.9, 1));
               else if (p==7) // Fishing pelagic low
-                pic[d][p].color(HSV(log(pixel.r/30.+0.3), 0.9, 1));
+                pic[d][p].color(HSV(log(pixel.r/90.+1), 0.9, 1));
               else if (p==8) // Fishing pelagic high
-                pic[d][p].color(HSV(log(pixel.r/30.+0.4), 0.9, 1));
-              // cout << pixel.r << atan(pixel.r) << endl;
+                pic[d][p].color(HSV(log(pixel.r/90.+1), 0.9, 1));
             }
           }
         }
