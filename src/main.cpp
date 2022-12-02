@@ -10,7 +10,7 @@
 using namespace al;
 using namespace std;
 static const int years = 11;    // Total number of years (2003~2013)
-static const int stressors = 9; // Total number of stressors
+static const int stressors = 11; // Total number of stressors
 
 struct State
 {
@@ -211,11 +211,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     // 3. Sea level rise
     stress = 3;
-    std::cout << "Start loading 3. Sea level rise" << std::endl;
+    std::cout << "Start loading 4. Ocean Acidification " << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
-      ostr << "data/chi/slr/slr_impact_5_" << d + 2003 << "_equi.png"; // ** change stressor
+      ostr << "data/chi/oa/oa_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
@@ -224,13 +224,14 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
+
     // 4. Ocean Acidification
     stress = 4;
-    std::cout << "Start loading 4. Ocean Acidification " << std::endl;
+    std::cout << "Start loading 3. Sea level rise" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
-      ostr << "data/chi/oa/oa_10_" << d + 2003 << "_impact.png"; // ** change stressor
+      ostr << "data/chi/slr/slr_impact_5_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
@@ -303,6 +304,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
+
+    // 9. Direct human
+    stress = 9;
+    std::cout << "Start loading 9. Direct human" << std::endl;
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/dh/dh_10_" << d + 2003 << "_impact.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][stress] = Image(filename);
+      pic[d][stress].primitive(Mesh::POINTS);
+ //     pic[d][stress].update();
+    }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
+
+    // 10. Organic chemical
+    stress = 10;
+    std::cout << "Start loading 10. Organic chemical" << std::endl;
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/oc/oc_10_" << d + 2003 << "_impact.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][stress] = Image(filename);
+      pic[d][stress].primitive(Mesh::POINTS);
+ //     pic[d][stress].update();
+    }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
     std::cout << "Loaded CHI data" << std::endl;
 
     // Assign color for data
@@ -339,12 +372,12 @@ struct SensoriumApp : public DistributedAppWithState<State>
                 pic[d][p].color(HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
               else if (p == 2) // shipping color
                 pic[d][p].color(HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60));
-              else if (p == 3) // sea level rise color
-                // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
-                pic[d][p].color(HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1)));
-              else if (p == 4) // Ocean Acidification
-                // pic[d][p].color(HSV(0.7-log(pixel.r/100.+ 0.1), 0.6+log(pixel.r/100.+0.1), 0.8+log(pixel.r/200.+1)));
+              else if (p == 3) // Ocean Acidification
                 pic[d][p].color(HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1));
+                // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
+              else if (p == 4) // sea level rise color
+                pic[d][p].color(HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1)));
+               // pic[d][p].color(HSV(0.7-log(pixel.r/100.+ 0.1), 0.6+log(pixel.r/100.+0.1), 0.8+log(pixel.r/200.+1)));
               else if (p == 5) // Fishing demersal low
                 pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
               else if (p == 6) // Fishing demersal high
@@ -353,6 +386,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
                 pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
               else if (p == 8) // Fishing pelagic high
                 pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+              else if (p == 9) // direct human
+                pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
+              else if (p == 10) // ocean chem
+                pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
             }
           }
         }
@@ -586,9 +623,19 @@ struct SensoriumApp : public DistributedAppWithState<State>
     case '.':
       state().swtch[8] = !state().swtch[8];
       return true;
+    case '/':
+      state().swtch[9] = !state().swtch[9];
+      return true;
+    case ';':
+      state().swtch[10] = !state().swtch[10];
+      return true;
     case '9':
       state().molph = !state().molph;
-      state().year = 2003;
+      year = 2003;
+      return true;
+    case '8':
+      for (int i = 0; i<11; i++)
+        state().swtch[i] = false;
       return true;
     default:
       return false;
