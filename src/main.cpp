@@ -10,7 +10,7 @@
 using namespace al;
 using namespace std;
 static const int years = 11;    // Total number of years (2003~2013)
-static const int stressors = 11; // Total number of stressors
+static const int stressors = 12; // Total number of stressors
 
 struct State
 {
@@ -336,12 +336,28 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
+
+    // 11. Cumulative human impacts
+    stress = 11;
+    std::cout << "Start loading 11. Cumulative human impacts" << std::endl;
+    for (int d = 0; d < years; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/chi/chi/cumulative_impact_10_" << d + 2003 << ".png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      oceanData[d][stress] = Image(filename);
+      pic[d][stress].primitive(Mesh::POINTS);
+ //     pic[d][stress].update();
+    }
+    data_W[stress] = oceanData[0][stress].width();
+    data_H[stress] = oceanData[0][stress].height();
     std::cout << "Loaded CHI data" << std::endl;
 
     // Assign color for data
     for (int p = 0; p < stressors; p++)
     {
-      point_dist = 2.005 + 0.001 * p;
+      point_dist = 2.002 + 0.001 * p;
       for (int d = 0; d < years; d++)
       {
         for (int row = 0; row < data_H[p]; row++)
@@ -389,6 +405,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
               else if (p == 9) // direct human
                 pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
               else if (p == 10) // ocean chem
+                pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
+              else if (p == 11) // cumulative human impact
                 pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
             }
           }
@@ -628,6 +646,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       return true;
     case ';':
       state().swtch[10] = !state().swtch[10];
+      return true;
+    case 'n':
+      state().swtch[11] = !state().swtch[11];
       return true;
     case '9':
       state().molph = !state().molph;
