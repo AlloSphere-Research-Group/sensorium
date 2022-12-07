@@ -176,9 +176,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][0].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 1. Nutrients
     stress = 1;
     std::cout << "Start loading 1. Nutrients" << std::endl;
@@ -191,9 +188,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 2. Shipping
     stress = 2;
     std::cout << "Start loading 2. Shipping" << std::endl;
@@ -206,9 +200,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 3. Sea level rise
     stress = 3;
     std::cout << "Start loading 4. Ocean Acidification " << std::endl;
@@ -221,9 +212,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 4. Ocean Acidification
     stress = 4;
     std::cout << "Start loading 3. Sea level rise" << std::endl;
@@ -236,9 +224,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 5. Fishing demersal low
     stress = 5;
     std::cout << "Start loading 5. Fishing demersal low " << std::endl;
@@ -251,9 +236,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 6. Fishing demersal high
     stress = 6;
     std::cout << "Start loading 6. Fishing demersal high " << std::endl;
@@ -266,9 +248,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 7. Fishing pelagic low
     stress = 7;
     std::cout << "Start loading 7. Fishing pelagic low" << std::endl;
@@ -281,9 +260,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 8. Fishing pelagic high
     stress = 8;
     std::cout << "Start loading 8. Fishing pelagic high" << std::endl;
@@ -296,9 +272,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 9. Direct human
     stress = 9;
     std::cout << "Start loading 9. Direct human" << std::endl;
@@ -311,9 +284,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 10. Organic chemical
     stress = 10;
     std::cout << "Start loading 10. Organic chemical" << std::endl;
@@ -326,9 +296,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
-
     // 11. Cumulative human impacts
     stress = 11;
     std::cout << "Start loading 11. Cumulative human impacts" << std::endl;
@@ -341,13 +308,13 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    data_W[stress] = oceanData[0][stress].width();
-    data_H[stress] = oceanData[0][stress].height();
     std::cout << "Loaded CHI data" << std::endl;
 
     // Assign color for data
     for (int p = 0; p < stressors; p++)
     {
+      data_W[p] = oceanData[0][p].width();
+      data_H[p] = oceanData[0][p].height();
       point_dist = 2.002 + 0.001 * p;
       for (int d = 0; d < years; d++)
       {
@@ -373,7 +340,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
               if (p == 0) // sst color
-                data_color[d][p] = HSV(0.55 + log(pixel.r / 70. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
+                data_color[d][p] = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
               else if (p == 1) // nutrient pollution color
                 data_color[d][p] = (HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
               else if (p == 2) // shipping color
