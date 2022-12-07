@@ -23,6 +23,7 @@ struct State
   bool molph{false};
   float lux;
   float year;
+  float radius;
 };
 
 struct GeoLoc
@@ -454,6 +455,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       }
       state().global_pose.set(nav());
       state().year = year;
+      state().radius = radius;
     }    // prim end
     else // renderer
     {
@@ -510,7 +512,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
         }
         g.pointSize(ps);
         // Update data pose when nav is inside of the globe
-        if (radius < 2)
+        if (state().radius < 2)
         {
           g.scale(0.9);
         }
