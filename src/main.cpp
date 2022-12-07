@@ -460,7 +460,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
         lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
       }
     
-
       // Set light position
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
       Light::globalAmbient({lux, lux, lux});
@@ -529,6 +528,13 @@ struct SensoriumApp : public DistributedAppWithState<State>
         {
           ps = 7;
         }
+        // Update data pose when nav is inside of the globe
+        if(radius < 2){
+          g.scale(0.9);
+        } else{
+          g.scale(1);
+        }
+
         g.pointSize(ps);
         g.draw(pic[(int)state().year - 2003][j]); // only needed if we go inside the earth
         g.popMatrix();
