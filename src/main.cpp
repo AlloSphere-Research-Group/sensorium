@@ -1,7 +1,6 @@
 // Sensorium Main
-// TODO : 
+// TODO :
 // - gradually fade in-out stressors
-// - draw efficiently. by distance
 
 #include <iostream>
 #include <string.h>
@@ -14,7 +13,7 @@
 
 using namespace al;
 using namespace std;
-static const int years = 11;    // Total number of years (2003~2013)
+static const int years = 11;     // Total number of years (2003~2013)
 static const int stressors = 12; // Total number of stressors
 
 struct State
@@ -58,6 +57,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
   float point_dist = 1.01 * earth_radius;
   int data_W[stressors], data_H[stressors];
   VAOMesh pic[years][stressors];
+  Color data_color[years][stressors];
+  float morph_year;
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
   void onInit() override
@@ -141,8 +142,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
                                                  -radius.get() * cos(value / 180.0 * M_PI) *
                                                      cos(lon.get() / 180.0 * M_PI)));
 
-                                 nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
-                               });
+                                 nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
     lon.registerChangeCallback([&](float value)
                                {
@@ -151,8 +151,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
                                                  radius.get() * sin(lat.get() / 180.0 * M_PI),
                                                  -radius.get() * cos(lat.get() / 180.0 * M_PI) *
                                                      cos(value / 180.0 * M_PI)));
-                                 nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
-                               });
+                                 nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
     radius.registerChangeCallback([&](float value)
                                   {
@@ -161,8 +160,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
                                                     value * sin(lat.get() / 180.0 * M_PI),
                                                     -value * cos(lat.get() / 180.0 * M_PI) *
                                                         cos(lon.get() / 180.0 * M_PI)));
-                                    nav().faceToward(Vec3d(0), Vec3d(0, 1, 0));
-                                  });
+                                    nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
     // Bring ocean data (image)
     // 0. SST
@@ -375,31 +373,33 @@ struct SensoriumApp : public DistributedAppWithState<State>
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
               if (p == 0) // sst color
-                pic[d][p].color(HSV(0.55 + log(pixel.r / 70. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300)));
+                data_color[d][p] = HSV(0.55 + log(pixel.r / 70. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
               else if (p == 1) // nutrient pollution color
-                pic[d][p].color(HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
+                data_color[d][p] = (HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
               else if (p == 2) // shipping color
-                pic[d][p].color(HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60));
+                data_color[d][p] = (HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60));
               else if (p == 3) // Ocean Acidification
-                pic[d][p].color(HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1));
-                // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
+                data_color[d][p] = (HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1));
+              // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
               else if (p == 4) // sea level rise color
-                pic[d][p].color(HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1)));
-               // pic[d][p].color(HSV(0.7-log(pixel.r/100.+ 0.1), 0.6+log(pixel.r/100.+0.1), 0.8+log(pixel.r/200.+1)));
+                data_color[d][p] = (HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1)));
+              // pic[d][p].color(HSV(0.7-log(pixel.r/100.+ 0.1), 0.6+log(pixel.r/100.+0.1), 0.8+log(pixel.r/200.+1)));
               else if (p == 5) // Fishing demersal low
-                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+                data_color[d][p] = (HSV(log(pixel.r / 90. + 1), 0.9, 1));
               else if (p == 6) // Fishing demersal high
-                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+                data_color[d][p] =(HSV(log(pixel.r / 90. + 1), 0.9, 1));
               else if (p == 7) // Fishing pelagic low
-                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+                data_color[d][p] = (HSV(log(pixel.r / 90. + 1), 0.9, 1));
               else if (p == 8) // Fishing pelagic high
-                pic[d][p].color(HSV(log(pixel.r / 90. + 1), 0.9, 1));
+                data_color[d][p] = (HSV(log(pixel.r / 90. + 1), 0.9, 1));
               else if (p == 9) // direct human
-                pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
+                data_color[d][p] = (HSV(log(pixel.r / 120. + 1), 0.9, 1));
               else if (p == 10) // ocean chem
-                pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
+                data_color[d][p] = (HSV(log(pixel.r / 120. + 1), 0.9, 1));
               else if (p == 11) // cumulative human impact
-                pic[d][p].color(HSV(log(pixel.r / 120. + 1), 0.9, 1));
+                data_color[d][p] = (HSV(log(pixel.r / 120. + 1), 0.9, 1));
+              // end of assigning colors for data
+              pic[d][p].color(data_color[d][p]);
             }
           }
         }
@@ -459,7 +459,20 @@ struct SensoriumApp : public DistributedAppWithState<State>
         lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
         lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
       }
-    
+      // To smooth transition between the years, use alpha value to be updated using varying time
+      // morph_year = year - floor(year);
+      // if (morph_year)
+      {
+        for (int p = 0; p < stressors; p++)
+        {
+          for (int d = 0; d < years; d++)
+          {
+            data_color[d][p].a = year - floor(year);
+            pic[d][p].color(data_color[d][p]);
+          }
+        }
+      }
+
       // Set light position
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
       Light::globalAmbient({lux, lux, lux});
@@ -528,14 +541,16 @@ struct SensoriumApp : public DistributedAppWithState<State>
         {
           ps = 7;
         }
+        g.pointSize(ps);
         // Update data pose when nav is inside of the globe
-        if(radius < 2){
+        if (radius < 2)
+        {
           g.scale(0.9);
-        } else{
+        }
+        else
+        {
           g.scale(1);
         }
-
-        g.pointSize(ps);
         g.draw(pic[(int)state().year - 2003][j]); // only needed if we go inside the earth
         g.popMatrix();
       }
@@ -656,7 +671,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       year = 2003;
       return true;
     case '8':
-      for (int i = 0; i<stressors; i++)
+      for (int i = 0; i < stressors; i++)
         state().swtch[i] = false;
       return true;
     default:
