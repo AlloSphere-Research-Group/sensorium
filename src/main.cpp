@@ -1,3 +1,8 @@
+// Sensorium Main
+// TODO : 
+// - gradually fade in-out stressors
+// - draw efficiently. by distance
+
 #include <iostream>
 #include <string.h>
 #include "al/app/al_DistributedApp.hpp"
@@ -52,7 +57,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   float earth_radius = 5;
   float point_dist = 1.01 * earth_radius;
   int data_W[stressors], data_H[stressors];
-  Mesh pic[years][stressors];
+  VAOMesh pic[years][stressors];
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
   void onInit() override
@@ -172,7 +177,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       std::strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][0].primitive(Mesh::POINTS);
-      // pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -188,7 +192,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -204,7 +207,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -220,7 +222,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -236,7 +237,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -252,7 +252,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -268,7 +267,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -284,7 +282,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -300,7 +297,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -316,7 +312,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -332,7 +327,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -348,7 +342,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
- //     pic[d][stress].update();
     }
     data_W[stress] = oceanData[0][stress].width();
     data_H[stress] = oceanData[0][stress].height();
@@ -368,7 +361,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
           for (int column = 0; column < data_W[p]; column++)
           {
             auto pixel = oceanData[d][p].at(column, data_H[p] - row - 1);
-
             if (pixel.r > 0)
             {
               // {
@@ -411,6 +403,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
             }
           }
         }
+        pic[d][p].update();
       }
     }
   }
@@ -466,6 +459,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
         lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
         lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
       }
+    
+
       // Set light position
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
       Light::globalAmbient({lux, lux, lux});
@@ -530,9 +525,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
         g.blendTrans();
         g.pushMatrix();
         float ps = 50 / nav().pos().magSqr();
-        if (ps > 5)
+        if (ps > 7)
         {
-          ps = 5;
+          ps = 7;
         }
         g.pointSize(ps);
         g.draw(pic[(int)state().year - 2003][j]); // only needed if we go inside the earth
