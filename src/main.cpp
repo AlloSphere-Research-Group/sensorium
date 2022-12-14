@@ -10,9 +10,15 @@
 #include "al_ext/statedistribution/al_CuttleboneDomain.hpp"
 #include "al/graphics/al_Shapes.hpp"
 #include "al/graphics/al_Light.hpp"
+#include "Gamma/Oscillator.h"
+#include "Gamma/Noise.h"
+#include "Gamma/Filter.h"
+#include "al/sound/al_Reverb.hpp"
 
 using namespace al;
 using namespace std;
+using namespace gam;
+
 static const int years = 11;     // Total number of years (2003~2013)
 static const int stressors = 12; // Total number of stressors
 
@@ -45,6 +51,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter lux{"Light", 0.6, 0, 1};
   Parameter year{"Year", 2003, 2003, 2013};
   Parameter trans{"Trans", 0.99, 0.1, 1};
+  Parameter gain{"Audio", 0, 0, 2};
+
   GeoLoc sourceGeoLoc, targetGeoLoc;
   Image oceanData[years][stressors];
   double morphProgress{0.0};
@@ -61,6 +69,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Color data_color[years][stressors];
   float morph_year;
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
+  gam::Buzz<> wave;
+  gam::Sine<> env;
+  gam::NoiseWhite<> mNoise;
+  gam::Biquad<> mFilter{};
+  Reverb<float> reverb;
 
   void onInit() override
   {
@@ -130,7 +143,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      *gui << lat << lon << radius << lux << year << trans;
+      *gui << lat << lon << radius << lux << year << trans << gain;
     }
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
@@ -201,9 +214,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    // 3. Sea level rise
+    // 3. Ocean Acidification
     stress = 3;
-    std::cout << "Start loading 4. Ocean Acidification " << std::endl;
+    std::cout << "Start loading 3. Ocean Acidification " << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -213,9 +226,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       oceanData[d][stress] = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
     }
-    // 4. Ocean Acidification
+    // 4. Sea level rise
     stress = 4;
-    std::cout << "Start loading 3. Sea level rise" << std::endl;
+    std::cout << "Start loading 4. Sea level rise" << std::endl;
     for (int d = 0; d < years; d++)
     {
       ostringstream ostr;
@@ -374,6 +387,15 @@ struct SensoriumApp : public DistributedAppWithState<State>
         pic[d][p].update();
       }
     }
+    // audio
+    // filter
+    mFilter.zero();
+    mFilter.res(1);
+    mFilter.type(LOW_PASS);
+    reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
+    reverb.damping(0.5f);   // High-frequency damping, in [0,1]
+    reverb.decay(0.6f);     // Tail decay factor, in [0,1]
+
   }
 
   void onAnimate(double dt) override
@@ -453,6 +475,12 @@ struct SensoriumApp : public DistributedAppWithState<State>
           year = 2013;
         }
       }
+//  audio
+      mFilter.freq(30*(1+10/(radius+3)) * (year-2000));
+      // mFilter.res();
+      mFilter.type(LOW_PASS);
+      reverb.decay(0.6f + 0.3/(radius+1));     // Tail decay factor, in [0,1]
+
       state().global_pose.set(nav());
       state().year = year;
       state().radius = radius;
@@ -464,7 +492,18 @@ struct SensoriumApp : public DistributedAppWithState<State>
       Light::globalAmbient({state().lux, state().lux, state().lux});
     }
   }
-
+  void onSound(AudioIOData &io) override { 
+    while (io())
+    {
+      // wave.freq( (2 + mNoise()) * (1+10/radius) * (year-2000) ) ;
+      env.freq( 0.005 * (year-1980));
+      float wave_out = mFilter(mNoise() * gain.get() * env());
+      float wet1, wet2;
+      reverb(wave_out, wet1, wet2);
+      io.out(0) = wet1;
+      io.out(1) = wet2;
+    }
+  }
   void onDraw(Graphics &g) override
   {
     g.clear(0, 0, 0);
