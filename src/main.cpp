@@ -38,7 +38,16 @@ struct GeoLoc
   float lon;
   float radius;
 };
-
+string slurp(string fileName) {
+  fstream file(fileName);
+  string returnValue = "";
+  while (file.good()) {
+    string line;
+    getline(file, line);
+    returnValue += line + "\n";
+  }
+  return returnValue;
+};
 struct SensoriumApp : public DistributedAppWithState<State>
 {
   VAOMesh skyMesh, sphereMesh;
@@ -52,6 +61,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter year{"Year", 2003, 2003, 2013};
   Parameter trans{"Trans", 0.99, 0.1, 1};
   Parameter gain{"Audio", 0, 0, 2};
+  Parameter pointSize{"/pointSize", "", 0.11, "", 0.0, 1.0};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   Image oceanData[years][stressors];
@@ -74,6 +84,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   gam::NoiseWhite<> mNoise;
   gam::Biquad<> mFilter{};
   Reverb<float> reverb;
+  ShaderProgram pointShader;
 
   void onInit() override
   {
@@ -96,7 +107,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
     addSphereWithTexcoords(sphereMesh, 2, 50, false);
     sphereMesh.update();
-
+    pointShader.compile(slurp("data/point-vertex.glsl"),
+                        slurp("data/point-fragment.glsl"),
+                        slurp("data/point-geometry.glsl"));
     std::string dataPath;
 
     if (sphere::isSphereMachine())
@@ -143,7 +156,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      *gui << lat << lon << radius << lux << year << trans << gain;
+      *gui << lat << lon << radius << lux << year << trans << gain << pointSize;
     }
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
@@ -544,21 +557,18 @@ struct SensoriumApp : public DistributedAppWithState<State>
         g.meshColor();
         g.blendTrans();
         g.pushMatrix();
-        float ps = 50 / nav().pos().magSqr();
-        if (ps > 7)
-        {
-          ps = 7;
-        }
-        g.pointSize(ps);
         // Update data pose when nav is inside of the globe
         if (state().radius < 2)
         {
-          g.scale(0.9);
+          g.scale(0.95);
         }
         else
         {
           g.scale(1);
         }
+        g.shader(pointShader);
+        pointSize.set(0.5 + abs(1/(radius-2)));
+        g.shader().uniform("pointSize", pointSize / 300);
         g.draw(pic[(int)state().year - 2003][j]); // only needed if we go inside the earth
         g.popMatrix();
       }
