@@ -30,6 +30,7 @@ struct State
   float lux;
   float year;
   float radius;
+  int osc_click[10];
 };
 
 struct GeoLoc
@@ -85,6 +86,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   gam::Biquad<> mFilter{};
   Reverb<float> reverb;
   ShaderProgram pointShader;
+  osc::Recv server;
 
   void onInit() override
   {
@@ -94,6 +96,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
       std::cerr << "ERROR: Could not start Cuttlebone" << std::endl;
       quit();
     }
+    // OSC receiver
+    server.open(4444,"0.0.0.0", 0.05);
+    server.handler(oscDomain()->handler());
+    server.start();
   }
 
   void onCreate() override
@@ -696,6 +702,15 @@ struct SensoriumApp : public DistributedAppWithState<State>
       return false;
     }
   }
+
+	void onMessage(osc::Message& m) override {
+    if (m.addressPattern() == "/b_0") {
+      m >> state().osc_click[0];
+    }else if (m.addressPattern() == "/b_1") {
+      m >> state().osc_click[1];
+    }
+  }
+
 };
 
 int main()
