@@ -49,7 +49,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
-  Parameter lux{"Light", 0.6, 0, 1};
+  Parameter lux{"Light", 0.6, 0, 2.5};
   Parameter year{"Year", 2003, 2003, 2013};
   // Parameter trans{"Trans", 0.99, 0.1, 1};
   Parameter gain{"Audio", 0, 0, 2};
@@ -90,7 +90,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   gam::NoiseWhite<> mNoise;
   gam::Biquad<> mFilter{};
   Reverb<float> reverb;
-  osc::Recv server;
+  // osc::Recv server;
 
   void onInit() override
   {
@@ -101,9 +101,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       quit();
     }
     // OSC receiver
-    server.open(4444,"0.0.0.0", 0.05);
-    server.handler(oscDomain()->handler());
-    server.start();
+    // server.open(4444,"0.0.0.0", 0.05);
+    // server.handler(oscDomain()->handler());
+    // server.start();
   }
 
   void onCreate() override
@@ -535,7 +535,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
     while (io())
     {
       // wave.freq( (2 + mNoise()) * (1+10/radius) * (year-2000) ) ;
-      env.freq( 0.005 * (year-1980));
+      env.freq( 0.003 * (year-1980));
       float wave_out = mFilter(mNoise() * gain.get() * env());
       float wet1, wet2;
       reverb(wave_out, wet1, wet2);
