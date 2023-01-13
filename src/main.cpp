@@ -51,8 +51,23 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
   Parameter lux{"Light", 0.6, 0, 1};
   Parameter year{"Year", 2003, 2003, 2013};
-  Parameter trans{"Trans", 0.99, 0.1, 1};
+  // Parameter trans{"Trans", 0.99, 0.1, 1};
   Parameter gain{"Audio", 0, 0, 2};
+  ParameterBool s_ci{"Cumulative impacts", "", 0.0};
+  ParameterBool s_oc{"Organic chemical pollution", "", 0.0};
+  ParameterBool s_np{"Nutrient pollution", "", 0.0};
+  ParameterBool s_dh{"Direct human", "", 0.0};
+  ParameterBool s_slr{"Sea level rise", "", 0.0};
+  ParameterBool s_oa{"Ocean acidification", "", 0.0};
+  ParameterBool s_sst{"Sea surface temperature", "", 0.0};
+  ParameterBool s_cf_pl{"Commercial fishing - pelagic low-bycatch", "", 0.0};
+  ParameterBool s_cf_ph{"Commercial fishing - pelagic high-bycatch", "", 0.0};
+  ParameterBool s_cf_dl{"Commercial fishing - demersal non-destructive high-bycatch", "", 0.0};
+  ParameterBool s_cf_dh{"Commercial fishing - demersal non-desctructive low-bycatch", "", 0.0};
+  ParameterBool s_cf_dd{"Commercial fishing - demersal destructive", "", 0.0};
+  ParameterBool a_f{"Artisanal fishing", "", 0.0};
+  ParameterBool s_shp{"Shipping", "", 0.0};
+
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   Image oceanData[years][stressors];
@@ -148,7 +163,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      *gui << lat << lon << radius << lux << year << trans << gain;
+      *gui << lat << lon << radius << lux << year << gain;
+      *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa;
+      // *gui << s_ci << s_oc << s_np;
+
+      // *gui << lat << lon << radius << lux << year << trans << gain;
     }
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
