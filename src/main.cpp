@@ -164,7 +164,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       gui = &guiDomain->newGUI();
 
       *gui << lat << lon << radius << lux << year << gain;
-      *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa;
+      *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+      *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+      // *gui << s_cf_dd << a_f // currently we don't have this data
       // *gui << s_ci << s_oc << s_np;
 
       // *gui << lat << lon << radius << lux << year << trans << gain;
@@ -508,7 +510,21 @@ struct SensoriumApp : public DistributedAppWithState<State>
       state().global_pose.set(nav());
       state().year = year;
       state().radius = radius;
+      state().swtch[0] = s_sst;
+      state().swtch[1] = s_np;
+      state().swtch[2] = s_shp;
+      state().swtch[3] = s_oa;
+      state().swtch[4] = s_slr;
+      state().swtch[5] = s_cf_dl;
+      state().swtch[6] = s_cf_dh;
+      state().swtch[7] = s_cf_pl;
+      state().swtch[8] = s_cf_ph;
+      state().swtch[9] = s_dh;
+      state().swtch[10] = s_oc;
+      state().swtch[11] = s_ci;
     }    // prim end
+//       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+      // *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_cf_dd << a_f << s_shp;
     else // renderer
     {
       nav().set(state().global_pose);
