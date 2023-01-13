@@ -163,6 +163,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
+      std::string displayText = "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
       *gui << lat << lon << radius << lux << year << gain;
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
@@ -523,8 +524,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
       state().swtch[10] = s_oc;
       state().swtch[11] = s_ci;
     }    // prim end
-//       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
-      // *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_cf_dd << a_f << s_shp;
     else // renderer
     {
       nav().set(state().global_pose);
