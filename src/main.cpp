@@ -21,11 +21,13 @@ using namespace gam;
 
 static const int years = 11;     // Total number of years (2003~2013)
 static const int stressors = 12; // Total number of stressors
+static const int num_cloud = 3; // Total number of stressors
 
 struct State
 {
   Pose global_pose;
   bool swtch[stressors]{false};
+  bool cloud_swtch[num_cloud]{false};
   bool molph{false};
   float lux;
   float year;
@@ -67,10 +69,13 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ParameterBool s_cf_dd{"Commercial fishing - demersal destructive", "", 0.0};
   ParameterBool a_f{"Artisanal fishing", "", 0.0};
   ParameterBool s_shp{"Shipping", "", 0.0};
-
+  ParameterBool s_cloud{"Clouds", "", 0.0};
+  ParameterBool s_cloud_storm{"Clouds - Storm", "", 0.0};
+  ParameterBool s_cloud_eu{"Clouds - EU", "", 0.0};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   Image oceanData[years][stressors];
+  Image cloudData[num_cloud];
   double morphProgress{0.0};
   double morphDuration{5.0};
   const double defaultMorph{5.0};
@@ -81,7 +86,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
   float earth_radius = 5;
   float point_dist = 1.01 * earth_radius;
   int data_W[stressors], data_H[stressors];
+  int cloud_W[num_cloud], cloud_H[num_cloud];
+
   VAOMesh pic[years][stressors];
+  VAOMesh cloud[num_cloud];
   Color data_color[years][stressors];
   float morph_year;
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
@@ -167,6 +175,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       *gui << lat << lon << radius << lux << year << gain;
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+      *gui << s_cloud << s_cloud_storm << s_cloud_eu;
       // *gui << s_cf_dd << a_f // currently we don't have this data
       // *gui << s_ci << s_oc << s_np;
 
@@ -216,7 +225,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       std::strcpy(filename, ostr.str().c_str());
       oceanData[d][stress] = Image(filename);
       pic[d][0].primitive(Mesh::POINTS);
-    }
+    }    
     // 1. Nutrients
     stress = 1;
     std::cout << "Start loading 1. Nutrients" << std::endl;
@@ -350,7 +359,50 @@ struct SensoriumApp : public DistributedAppWithState<State>
       pic[d][stress].primitive(Mesh::POINTS);
     }
     std::cout << "Loaded CHI data" << std::endl;
+    // Import Cloud figures
+    for (int d = 0; d < num_cloud; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/cloud/" << d << ".jpg"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      cloudData[d] = Image(filename);
+      cloud[d].primitive(Mesh::POINTS);
+    }
+    // Assign color for cloud
+    for (int p = 0; p < num_cloud; p++)
+    {
+      cloud_W[p] = cloudData[p].width();
+      cloud_H[p] = cloudData[p].height();
+      point_dist = 2.015 + 0.001 * p;
+      for (int row = 0; row < cloud_H[p]; row++)
+      {
+        double theta = row * M_PI / cloud_H[p];
+        double sinTheta = sin(theta);
+        double cosTheta = cos(theta);
+        for (int column = 0; column < cloud_W[p]; column++)
+        {
+          auto pixel = cloudData[p].at(column, cloud_H[p] - row - 1);
+          if (pixel.r > 10)
+          {
+            // {
+            double phi = column * M_2PI / cloud_W[p];
+            double sinPhi = sin(phi);
+            double cosPhi = cos(phi);
 
+            double x = sinPhi * sinTheta;
+            double y = -cosTheta;
+            double z = cosPhi * sinTheta;
+
+            cloud[p].vertex(x * point_dist, y * point_dist, z * point_dist);
+            // init color config
+            // end of assigning colors for data
+            cloud[p].color(Color(log(pixel.r / 60. + 2)));
+          }
+        }
+      }
+      cloud[p].update();
+    }
     // Assign color for data
     for (int p = 0; p < stressors; p++)
     {
@@ -377,7 +429,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
               double x = sinPhi * sinTheta;
               double y = -cosTheta;
               double z = cosPhi * sinTheta;
-
+              // TODO: This can be preprocessed for shorting the load time - ML
               pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
               if (p == 0) // sst color
@@ -414,6 +466,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
         pic[d][p].update();
       }
     }
+
     // audio
     // filter
     mFilter.zero();
@@ -523,6 +576,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       state().swtch[9] = s_dh;
       state().swtch[10] = s_oc;
       state().swtch[11] = s_ci;
+      state().cloud_swtch[0] = s_cloud;
+      state().cloud_swtch[1] = s_cloud_eu;
+      state().cloud_swtch[2] = s_cloud_storm;
     }    // prim end
     else // renderer
     {
@@ -600,6 +656,24 @@ struct SensoriumApp : public DistributedAppWithState<State>
         }
         g.draw(pic[(int)state().year - 2003][j]); // only needed if we go inside the earth
         g.popMatrix();
+      }
+    }
+    // draw cloud
+    for (int j = 0; j < num_cloud; j++)
+    {
+      if (state().cloud_swtch[j])
+      {
+        g.meshColor();
+        g.blendTrans();
+        g.pushMatrix();
+        float ps = 100 / nav().pos().magSqr();
+        if (ps > 7)
+        {
+          ps = 7;
+        }
+        g.pointSize(0.4);
+        g.draw(cloud[j]); // only needed if we go inside the earth
+        g.popMatrix();        
       }
     }
   }
