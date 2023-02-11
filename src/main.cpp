@@ -107,9 +107,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Color data_color;
 
   VAOMesh pic[years][stressors];
-  // VAOMesh cloud[num_cloud], co2_mesh[num_county];
-  VAOMesh cloud[num_cloud];
-  Mesh co2_mesh[num_county];
+  VAOMesh cloud[num_cloud], co2_mesh[num_county];
+  // VAOMesh cloud[num_cloud];
+  // Mesh co2_mesh[num_county];
   float nation_lat[num_county], nation_lon[num_county];
   float morph_year;
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
@@ -128,6 +128,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Texture lineTexture;
   FBO renderTarget;
   Texture rendered;
+  float timer = 0;
+
   void updateFBO(int w, int h) {
     rendered.create2D(w, h);
     renderTarget.bind();
@@ -183,35 +185,35 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
 
 // Import Cloud figures
-    Image cloudData[num_cloud];
-    int cloud_W[num_cloud], cloud_H[num_cloud];
+    Image cloudData;
+    int cloud_W, cloud_H;
     for (int d = 0; d < num_cloud; d++)
     {
       ostringstream ostr;
       ostr << "data/cloud/" << d << ".jpg"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      cloudData[d] = Image(filename);
+      cloudData = Image(filename);
       cloud[d].primitive(Mesh::POINTS);
     }
     // Assign color for cloud
     for (int p = 0; p < num_cloud; p++)
     {
-      cloud_W[p] = cloudData[p].width();
-      cloud_H[p] = cloudData[p].height();
+      cloud_W = cloudData.width();
+      cloud_H = cloudData.height();
       point_dist = 2.015 + 0.001 * p;
-      for (int row = 0; row < cloud_H[p]; row++)
+      for (int row = 0; row < cloud_H; row++)
       {
-        double theta = row * M_PI / cloud_H[p];
+        double theta = row * M_PI / cloud_H;
         double sinTheta = sin(theta);
         double cosTheta = cos(theta);
-        for (int column = 0; column < cloud_W[p]; column++)
+        for (int column = 0; column < cloud_W; column++)
         {
-          auto pixel = cloudData[p].at(column, cloud_H[p] - row - 1);
+          auto pixel = cloudData.at(column, cloud_H - row - 1);
           if (pixel.r > 10)
           {
             // {
-            double phi = column * M_2PI / cloud_W[p];
+            double phi = column * M_2PI / cloud_W;
             double sinPhi = sin(phi);
             double cosPhi = cos(phi);
 
@@ -881,6 +883,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
   void onAnimate(double dt) override
   {
+    timer += dt;
     if (isPrimary())
     {
       Vec3f point_you_want_to_see = Vec3f(0, 0, 0); // examplary point that you want to see
@@ -1090,8 +1093,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       for (int nation = 0; nation < num_county; nation++)
       {
         // co2_mesh[nation].primitive(Mesh::LINES);
-        float co2 = co2_level[nation][(int)state().year - 2003];
+        float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
         // g.blendTrans();
+        g.blending(true);
         g.pushMatrix();
         // g.translate(co2_pos[nation]*2.2);
         // g.rotate(nation_lat[nation], Vec3f(0,0,1));
@@ -1099,11 +1103,17 @@ struct SensoriumApp : public DistributedAppWithState<State>
         // g.scale(0.05, co2 * 0.0001,0.05);
         // g.scale(0.05, co2 * 0.0001,0.05);
         co2_mesh[nation].reset();
-        co2_mesh[nation].primitive(Mesh::LINES);
-        co2_mesh[nation].vertex(co2_pos[nation]*2);
-        co2_mesh[nation].vertex(co2_pos[nation]*2 + co2_pos[nation]*co2 * 0.0001);
-        g.color(HSV(co2* 0.00001,1.,1.));
-        // g.pointSize(1);
+        co2_mesh[nation].primitive(Mesh::POINTS);
+        for (unsigned k = 0; k < 100; k++)
+        {
+          // float flunctuation = k * 0.0001* sin(0.1 * k / M_PI + timer );
+          co2_mesh[nation].vertex(co2_pos[nation]*2 + co2_pos[nation]*co2 * 0.005 * k);
+            // + Vec3f(flunctuation, flunctuation, flunctuation));
+          co2_mesh[nation].texCoord(0.1, 0.1);
+        }
+        co2_mesh[nation].update();
+        g.color(HSV(co2,1.,1.));
+        g.pointSize(20*log2(1+co2));
         g.draw(co2_mesh[nation]); // only needed if we go inside the earth
         // g.scale(co2* 0.002);
         g.popMatrix();
