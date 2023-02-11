@@ -14,14 +14,27 @@
 #include "Gamma/Noise.h"
 #include "Gamma/Filter.h"
 #include "al/sound/al_Reverb.hpp"
+#include "al/io/al_CSVReader.hpp"
 
 using namespace al;
 using namespace std;
 using namespace gam;
 
-static const int years = 11;     // Total number of years (2003~2013)
-static const int stressors = 12; // Total number of stressors
-static const int num_cloud = 3; // Total number of stressors
+static const int years = 11;       // Total number of years (2003~2013)
+static const int stressors = 12;   // Total number of stressors
+static const int num_cloud = 3;    // Total number of stressors
+static const int num_county = 187; // Total number of stressors
+
+string slurp(string fileName) {
+  fstream file(fileName);
+  string returnValue = "";
+  while (file.good()) {
+    string line;
+    getline(file, line);
+    returnValue += line + "\n";
+  }
+  return returnValue;
+}
 
 struct State
 {
@@ -41,6 +54,11 @@ struct GeoLoc
   float lon;
   float radius;
 };
+
+typedef struct
+{
+  double val[years + 2];
+} co2Types;
 
 struct SensoriumApp : public DistributedAppWithState<State>
 {
@@ -72,10 +90,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ParameterBool s_cloud{"Clouds", "", 0.0};
   ParameterBool s_cloud_storm{"Clouds - Storm", "", 0.0};
   ParameterBool s_cloud_eu{"Clouds - EU", "", 0.0};
+  ParameterBool s_co2{"CO2", "", 0.0};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
-  Image oceanData[years][stressors];
-  Image cloudData[num_cloud];
+  // Image oceanData[years][stressors];
+  // Image cloudData[num_cloud];
   double morphProgress{0.0};
   double morphDuration{5.0};
   const double defaultMorph{5.0};
@@ -85,12 +104,13 @@ struct SensoriumApp : public DistributedAppWithState<State>
   Light light;
   float earth_radius = 5;
   float point_dist = 1.01 * earth_radius;
-  int data_W[stressors], data_H[stressors];
-  int cloud_W[num_cloud], cloud_H[num_cloud];
+  Color data_color;
 
   VAOMesh pic[years][stressors];
+  // VAOMesh cloud[num_cloud], co2_mesh[num_county];
   VAOMesh cloud[num_cloud];
-  Color data_color[years][stressors];
+  Mesh co2_mesh[num_county];
+  float nation_lat[num_county], nation_lon[num_county];
   float morph_year;
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
   gam::Buzz<> wave;
@@ -99,6 +119,21 @@ struct SensoriumApp : public DistributedAppWithState<State>
   gam::Biquad<> mFilter{};
   Reverb<float> reverb;
   // osc::Recv server;
+  CSVReader reader;
+  Vec3f co2_pos[num_county];
+  float co2_level[num_county][years];
+  ShaderProgram pointShader;
+  ShaderProgram lineShader;
+  Texture pointTexture;
+  Texture lineTexture;
+  FBO renderTarget;
+  Texture rendered;
+  void updateFBO(int w, int h) {
+    rendered.create2D(w, h);
+    renderTarget.bind();
+    renderTarget.attachTexture2D(rendered);
+    renderTarget.unbind();
+  }
 
   void onInit() override
   {
@@ -112,10 +147,94 @@ struct SensoriumApp : public DistributedAppWithState<State>
     // server.open(4444,"0.0.0.0", 0.05);
     // server.handler(oscDomain()->handler());
     // server.start();
+
+// Import CO2 data
+    // CSV columms label: lat + long + years (2003~2013)
+    for (int k = 0; k < years + 2; k++)
+    {
+      reader.addType(CSVReader::REAL);
+    }
+    reader.readFile("data/co2/2003_2013.csv");
+    std::vector<co2Types> co2_rows = reader.copyToStruct<co2Types>();
+    // to test the csv import . values supposed to be: co2_row.val[-]: first two column (lat, long) + years data
+    // year data : co2_row.val[2 ~ :]
+    // for (auto co2_row : co2_rows) {
+    //   cout << co2_row.val[0] << endl;
+    // }
+    // convert co2 lat lon to xyz
+    int nation_id = 0;
+    for (auto co2_row : co2_rows)
+    {
+      float lat = co2_row.val[0];
+      float lon = co2_row.val[1];
+      co2_pos[nation_id] = Vec3f(-cos(lat / 180.0 * M_PI) * sin(lon / 180.0 * M_PI),
+                                 sin(lat / 180.0 * M_PI),
+                                 -cos(lat / 180.0 * M_PI) * cos(lon / 180.0 * M_PI));
+      for (int i = 0; i < years; i++){
+        co2_level[nation_id][i] = co2_row.val[2+i];
+      }
+      // addCube(co2_mesh[nation_id], false, 0.01);
+      // co2_mesh[nation_id].decompress();
+      // co2_mesh[nation_id].generateNormals();
+      // co2_mesh[nation_id].update();
+      nation_lat[nation_id] = lat;
+      nation_lon[nation_id] = lon;
+      nation_id++;
+    }
+
+// Import Cloud figures
+    Image cloudData[num_cloud];
+    int cloud_W[num_cloud], cloud_H[num_cloud];
+    for (int d = 0; d < num_cloud; d++)
+    {
+      ostringstream ostr;
+      ostr << "data/cloud/" << d << ".jpg"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      strcpy(filename, ostr.str().c_str());
+      cloudData[d] = Image(filename);
+      cloud[d].primitive(Mesh::POINTS);
+    }
+    // Assign color for cloud
+    for (int p = 0; p < num_cloud; p++)
+    {
+      cloud_W[p] = cloudData[p].width();
+      cloud_H[p] = cloudData[p].height();
+      point_dist = 2.015 + 0.001 * p;
+      for (int row = 0; row < cloud_H[p]; row++)
+      {
+        double theta = row * M_PI / cloud_H[p];
+        double sinTheta = sin(theta);
+        double cosTheta = cos(theta);
+        for (int column = 0; column < cloud_W[p]; column++)
+        {
+          auto pixel = cloudData[p].at(column, cloud_H[p] - row - 1);
+          if (pixel.r > 10)
+          {
+            // {
+            double phi = column * M_2PI / cloud_W[p];
+            double sinPhi = sin(phi);
+            double cosPhi = cos(phi);
+
+            double x = sinPhi * sinTheta;
+            double y = -cosTheta;
+            double z = cosPhi * sinTheta;
+
+            cloud[p].vertex(x * point_dist, y * point_dist, z * point_dist);
+            // init color config
+            // end of assigning colors for data
+            cloud[p].color(Color(log(pixel.r / 50. + 3)));
+          }
+        }
+      }
+      cloud[p].update();
+    }
   }
 
   void onCreate() override
   {
+    Image oceanData;
+    int data_W, data_H;
+
     lens().fovy(45).eyeSep(0);
     nav().pos(0, 0, -5);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
@@ -145,7 +264,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
 
     // visible earth, nasa
-    sphereImage = Image(dataPath + "blue_marble_brighter.jpg");
+    // sphereImage = Image(dataPath + "blue_marble_brighter.jpg");
+    sphereImage = Image(dataPath + "16k.jpg");
     if (sphereImage.array().size() == 0)
     {
       std::cerr << "failed to load sphere image" << std::endl;
@@ -175,7 +295,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       *gui << lat << lon << radius << lux << year << gain;
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
-      *gui << s_cloud << s_cloud_storm << s_cloud_eu;
+      *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2;
       // *gui << s_cf_dd << a_f // currently we don't have this data
       // *gui << s_ci << s_oc << s_np;
 
@@ -223,9 +343,39 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/sst/sst_05_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       std::strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][0].primitive(Mesh::POINTS);
-    }    
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
+    }
     // 1. Nutrients
     stress = 1;
     std::cout << "Start loading 1. Nutrients" << std::endl;
@@ -235,8 +385,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 2. Shipping
     stress = 2;
@@ -247,8 +427,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/ship/ship_impact_10_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 3. Ocean Acidification
     stress = 3;
@@ -259,8 +469,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/oa/oa_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 4. Sea level rise
     stress = 4;
@@ -271,8 +511,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/slr/slr_impact_5_" << d + 2003 << "_equi.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 5. Fishing demersal low
     stress = 5;
@@ -283,8 +553,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/fish/fdl_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 6. Fishing demersal high
     stress = 6;
@@ -295,8 +595,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/fish/fdh_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 7. Fishing pelagic low
     stress = 7;
@@ -307,8 +637,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/fish/fpl_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 8. Fishing pelagic high
     stress = 8;
@@ -319,8 +679,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/fish/fph_100_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 9. Direct human
     stress = 9;
@@ -331,8 +721,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/dh/dh_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 10. Organic chemical
     stress = 10;
@@ -343,8 +763,38 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/oc/oc_10_" << d + 2003 << "_impact.png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
+        {
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
+          {
+            auto pixel = oceanData.at(column, data_H - row - 1);
+            if (pixel.r > 0)
+            {
+              // {
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
+
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
+              // TODO: This can be preprocessed for shorting the load time - ML
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
+              // init color config
+              data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
+            }
+          }
+        }
+        pic[d][stress].update();
     }
     // 11. Cumulative human impacts
     stress = 11;
@@ -355,118 +805,41 @@ struct SensoriumApp : public DistributedAppWithState<State>
       ostr << "data/chi/chi/cumulative_impact_10_" << d + 2003 << ".png"; // ** change stressor
       char *filename = new char[ostr.str().length() + 1];
       strcpy(filename, ostr.str().c_str());
-      oceanData[d][stress] = Image(filename);
+      oceanData = Image(filename);
       pic[d][stress].primitive(Mesh::POINTS);
-    }
-    std::cout << "Loaded CHI data" << std::endl;
-    // Import Cloud figures
-    for (int d = 0; d < num_cloud; d++)
-    {
-      ostringstream ostr;
-      ostr << "data/cloud/" << d << ".jpg"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      cloudData[d] = Image(filename);
-      cloud[d].primitive(Mesh::POINTS);
-    }
-    // Assign color for cloud
-    for (int p = 0; p < num_cloud; p++)
-    {
-      cloud_W[p] = cloudData[p].width();
-      cloud_H[p] = cloudData[p].height();
-      point_dist = 2.015 + 0.001 * p;
-      for (int row = 0; row < cloud_H[p]; row++)
-      {
-        double theta = row * M_PI / cloud_H[p];
-        double sinTheta = sin(theta);
-        double cosTheta = cos(theta);
-        for (int column = 0; column < cloud_W[p]; column++)
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++)
         {
-          auto pixel = cloudData[p].at(column, cloud_H[p] - row - 1);
-          if (pixel.r > 10)
+          float theta = row * M_PI / data_H;
+          float sinTheta = sin(theta);
+          float cosTheta = cos(theta);
+          for (int column = 0; column < data_W; column++)
           {
-            // {
-            double phi = column * M_2PI / cloud_W[p];
-            double sinPhi = sin(phi);
-            double cosPhi = cos(phi);
-
-            double x = sinPhi * sinTheta;
-            double y = -cosTheta;
-            double z = cosPhi * sinTheta;
-
-            cloud[p].vertex(x * point_dist, y * point_dist, z * point_dist);
-            // init color config
-            // end of assigning colors for data
-            cloud[p].color(Color(log(pixel.r / 60. + 2)));
-          }
-        }
-      }
-      cloud[p].update();
-    }
-    // Assign color for data
-    for (int p = 0; p < stressors; p++)
-    {
-      data_W[p] = oceanData[0][p].width();
-      data_H[p] = oceanData[0][p].height();
-      point_dist = 2.002 + 0.001 * p;
-      for (int d = 0; d < years; d++)
-      {
-        for (int row = 0; row < data_H[p]; row++)
-        {
-          double theta = row * M_PI / data_H[p];
-          double sinTheta = sin(theta);
-          double cosTheta = cos(theta);
-          for (int column = 0; column < data_W[p]; column++)
-          {
-            auto pixel = oceanData[d][p].at(column, data_H[p] - row - 1);
+            auto pixel = oceanData.at(column, data_H - row - 1);
             if (pixel.r > 0)
             {
               // {
-              double phi = column * M_2PI / data_W[p];
-              double sinPhi = sin(phi);
-              double cosPhi = cos(phi);
+              float phi = column * M_2PI / data_W;
+              float sinPhi = sin(phi);
+              float cosPhi = cos(phi);
 
-              double x = sinPhi * sinTheta;
-              double y = -cosTheta;
-              double z = cosPhi * sinTheta;
+              float x = sinPhi * sinTheta;
+              float y = -cosTheta;
+              float z = cosPhi * sinTheta;
               // TODO: This can be preprocessed for shorting the load time - ML
-              pic[d][p].vertex(x * point_dist, y * point_dist, z * point_dist);
+              pic[d][stress].vertex(x * point_dist, y * point_dist, z * point_dist);
               // init color config
-              if (p == 0) // sst color
-                data_color[d][p] = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
-              else if (p == 1) // nutrient pollution color
-                data_color[d][p] = (HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90));
-              else if (p == 2) // shipping color
-                data_color[d][p] = (HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60));
-              else if (p == 3) // Ocean Acidification
-                data_color[d][p] = (HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1));
-              // pic[d][p].color(HSV(0.6 + log(pixel.r/60. + 1), 0.96+log(pixel.r/60.+0.1), 0.98+log(pixel.r/60.+0.1)));
-              else if (p == 4) // sea level rise color
-                data_color[d][p] = (HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1)));
-              // pic[d][p].color(HSV(0.7-log(pixel.r/100.+ 0.1), 0.6+log(pixel.r/100.+0.1), 0.8+log(pixel.r/200.+1)));
-              else if (p == 5) // Fishing demersal low
-                data_color[d][p] = (HSV(log(pixel.r / 90. + 1), 0.9, 1));
-              else if (p == 6) // Fishing demersal high
-                data_color[d][p] =(HSV(log(pixel.r / 90. + 1), 0.9, 1));
-              else if (p == 7) // Fishing pelagic low
-                data_color[d][p] = (HSV(log(pixel.r / 90. + 1), 0.9, 1));
-              else if (p == 8) // Fishing pelagic high
-                data_color[d][p] = (HSV(log(pixel.r / 90. + 1), 0.9, 1));
-              else if (p == 9) // direct human
-                data_color[d][p] = (HSV(log(pixel.r / 120. + 1), 0.9, 1));
-              else if (p == 10) // ocean chem
-                data_color[d][p] = (HSV(log(pixel.r / 120. + 1), 0.9, 1));
-              else if (p == 11) // cumulative human impact
-                data_color[d][p] = (HSV(log(pixel.r / 120. + 1), 0.9, 1));
-              // end of assigning colors for data
-              pic[d][p].color(data_color[d][p]);
+              data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
+              pic[d][stress].color(data_color);
             }
           }
         }
-        pic[d][p].update();
-      }
+        pic[d][stress].update();
     }
-
+    std::cout << "Loaded CHI data. Preprocessed" << std::endl;
+    
     // audio
     // filter
     mFilter.zero();
@@ -475,7 +848,35 @@ struct SensoriumApp : public DistributedAppWithState<State>
     reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
     reverb.damping(0.5f);   // High-frequency damping, in [0,1]
     reverb.decay(0.6f);     // Tail decay factor, in [0,1]
-
+    // shader    
+    pointTexture.create2D(256, 256, Texture::R8, Texture::RED, Texture::SHORT);
+    int Nx = pointTexture.width();
+    int Ny = pointTexture.height();
+    std::vector<short> alpha;
+    alpha.resize(Nx * Ny);
+    for (int j = 0; j < Ny; ++j) {
+      float y = float(j) / (Ny - 1) * 2 - 1;
+      for (int i = 0; i < Nx; ++i) {
+        float x = float(i) / (Nx - 1) * 2 - 1;
+        float m = exp(-13 * (x * x + y * y));
+        m *= pow(2, 15) - 1;  // scale by the largest positive short int
+        alpha[j * Nx + i] = m;
+      }
+    }
+    pointTexture.submit(&alpha[0]);
+    lineTexture.create1D(256, Texture::R8, Texture::RED, Texture::SHORT);
+    std::vector<short> beta;
+    beta.resize(lineTexture.width());
+    for (int i = 0; i < beta.size(); ++i) {
+      beta[i] = alpha[128 * beta.size() + i];
+    }
+    lineTexture.submit(&beta[0]);
+    pointShader.compile(slurp("data/shaders/point-vertex.glsl"),
+                        slurp("data/shaders/point-fragment.glsl"),
+                        slurp("data/shaders/point-geometry.glsl"));
+    lineShader.compile(slurp("data/shaders/line-vertex.glsl"),
+                       slurp("data/shaders/line-fragment.glsl"),
+                       slurp("data/shaders/line-geometry.glsl"));
   }
 
   void onAnimate(double dt) override
@@ -532,16 +933,16 @@ struct SensoriumApp : public DistributedAppWithState<State>
       // To smooth transition between the years, use alpha value to be updated using varying time
       // morph_year = year - floor(year);
       // if (morph_year)
-      {
-        for (int p = 0; p < stressors; p++)
-        {
-          for (int d = 0; d < years; d++)
-          {
-            data_color[d][p].a = year - floor(year);
-            pic[d][p].color(data_color[d][p]);
-          }
-        }
-      }
+      // {
+      //   for (int p = 0; p < stressors; p++)
+      //   {
+      //     for (int d = 0; d < years; d++)
+      //     {
+      //       data_color[d][p].a = year - floor(year);
+      //       pic[d][p].color(data_color[d][p]);
+      //     }
+      //   }
+      // }
 
       // Set light position
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
@@ -555,11 +956,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
           year = 2013;
         }
       }
-//  audio
-      mFilter.freq(30*(1+10/(radius+3)) * (year-2000));
+      //  audio
+      mFilter.freq(30 * (1 + 10 / (radius + 3)) * (year - 2000));
       // mFilter.res();
       mFilter.type(LOW_PASS);
-      reverb.decay(0.6f + 0.3/(radius+1));     // Tail decay factor, in [0,1]
+      reverb.decay(0.6f + 0.3 / (radius + 1)); // Tail decay factor, in [0,1]
 
       state().global_pose.set(nav());
       state().year = year;
@@ -587,11 +988,12 @@ struct SensoriumApp : public DistributedAppWithState<State>
       Light::globalAmbient({state().lux, state().lux, state().lux});
     }
   }
-  void onSound(AudioIOData &io) override { 
+  void onSound(AudioIOData &io) override
+  {
     while (io())
     {
       // wave.freq( (2 + mNoise()) * (1+10/radius) * (year-2000) ) ;
-      env.freq( 0.003 * (year-1980));
+      env.freq(0.003 * (year - 1980));
       float wave_out = mFilter(mNoise() * gain.get() * env());
       float wet1, wet2;
       reverb(wave_out, wet1, wet2);
@@ -599,9 +1001,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
       io.out(1) = wet2;
     }
   }
+
   void onDraw(Graphics &g) override
   {
-    g.clear(0, 0, 0);
+    g.clear(0);
     g.culling(true);
     // g.cullFaceFront();
     g.lighting(true);
@@ -637,7 +1040,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       if (state().swtch[j])
       {
         g.meshColor();
-        g.blendTrans();
+        // g.blendTrans();
         g.pushMatrix();
         float ps = 50 / nav().pos().magSqr();
         if (ps > 7)
@@ -664,7 +1067,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       if (state().cloud_swtch[j])
       {
         g.meshColor();
-        g.blendTrans();
+        // g.blendTrans();
         g.pushMatrix();
         float ps = 100 / nav().pos().magSqr();
         if (ps > 7)
@@ -673,8 +1076,40 @@ struct SensoriumApp : public DistributedAppWithState<State>
         }
         g.pointSize(0.4);
         g.draw(cloud[j]); // only needed if we go inside the earth
-        g.popMatrix();        
+        g.popMatrix();
       }
+    }
+    // Draw CO2
+    if (s_co2)
+    {
+      // renderTarget.bind();  ///////////////////////////////////////////////
+      // gl::blending(true);
+      // gl::blendMode(GL_SRC_COLOR,GL_ONE,GL_FUNC_ADD);
+      // lineTexture.bind();
+      // g.shader(lineShader);
+      for (int nation = 0; nation < num_county; nation++)
+      {
+        // co2_mesh[nation].primitive(Mesh::LINES);
+        float co2 = co2_level[nation][(int)state().year - 2003];
+        // g.blendTrans();
+        g.pushMatrix();
+        // g.translate(co2_pos[nation]*2.2);
+        // g.rotate(nation_lat[nation], Vec3f(0,0,1));
+        // g.rotate(nation_lon[nation], Vec3f(-1,-1,0));
+        // g.scale(0.05, co2 * 0.0001,0.05);
+        // g.scale(0.05, co2 * 0.0001,0.05);
+        co2_mesh[nation].reset();
+        co2_mesh[nation].primitive(Mesh::LINES);
+        co2_mesh[nation].vertex(co2_pos[nation]*2);
+        co2_mesh[nation].vertex(co2_pos[nation]*2 + co2_pos[nation]*co2 * 0.0001);
+        g.color(HSV(co2* 0.00001,1.,1.));
+        // g.pointSize(1);
+        g.draw(co2_mesh[nation]); // only needed if we go inside the earth
+        // g.scale(co2* 0.002);
+        g.popMatrix();
+      }
+      // lineTexture.unbind();
+      // renderTarget.unbind();  /////////////////////////////////////////////
     }
   }
 
@@ -800,9 +1235,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
     }
   }
 
-	// void onMessage(osc::Message& m) override {
+  // void onMessage(osc::Message& m) override {
   // }
-
 };
 
 int main()
