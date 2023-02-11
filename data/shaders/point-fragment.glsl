@@ -2,16 +2,14 @@
 
 in Fragment {
   vec4 color;
-  vec2 textureCoordinate;
+  vec2 mapping;
 }
 fragment;
-
-uniform sampler2D alphaTexture;
 
 layout(location = 0) out vec4 fragmentColor;
 
 void main() {
-  float a = texture(alphaTexture, fragment.textureCoordinate).r;
-  // if (a < 0.05) discard;
-  fragmentColor = vec4(fragment.color.xyz, a);
+  float r = dot(fragment.mapping, fragment.mapping);
+  if (r > 1) discard;
+  fragmentColor = vec4(fragment.color.rgb, 1 - r * r);
 }

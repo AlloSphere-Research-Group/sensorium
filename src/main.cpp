@@ -1096,12 +1096,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
         float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
         // g.blendTrans();
         g.blending(true);
+        g.blendAdd();
         g.pushMatrix();
-        // g.translate(co2_pos[nation]*2.2);
-        // g.rotate(nation_lat[nation], Vec3f(0,0,1));
-        // g.rotate(nation_lon[nation], Vec3f(-1,-1,0));
-        // g.scale(0.05, co2 * 0.0001,0.05);
-        // g.scale(0.05, co2 * 0.0001,0.05);
+        g.shader(pointShader);
+        g.shader().uniform("pointSize", 200*log2(1+co2));
         co2_mesh[nation].reset();
         co2_mesh[nation].primitive(Mesh::POINTS);
         for (unsigned k = 0; k < 100; k++)
@@ -1112,8 +1110,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
           co2_mesh[nation].texCoord(0.1, 0.1);
         }
         co2_mesh[nation].update();
-        g.color(HSV(co2,1.,1.));
-        g.pointSize(20*log2(1+co2));
+        g.color(HSV(log2(1+co2),0.4+log2(1+co2),0.4+log2(1+co2)));
+        g.pointSize(10*log2(1+co2));
         g.draw(co2_mesh[nation]); // only needed if we go inside the earth
         // g.scale(co2* 0.002);
         g.popMatrix();

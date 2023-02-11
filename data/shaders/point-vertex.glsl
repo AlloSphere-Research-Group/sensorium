@@ -2,8 +2,8 @@
 
 layout(location = 0) in vec3 vertexPosition;
 layout(location = 1) in vec4 vertexColor;
-layout(location = 2) in vec2
-    vertexSize;  // as a 2D texture cordinate, but we ignore the y
+layout(location = 2) in vec2 vertexSize;
+// vertexSize is 2D texture cordinate, but we only use the x
 
 uniform mat4 al_ModelViewMatrix;
 uniform mat4 al_ProjectionMatrix;
