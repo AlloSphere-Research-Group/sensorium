@@ -15,6 +15,7 @@
 #include "Gamma/Filter.h"
 #include "al/sound/al_Reverb.hpp"
 #include "al/io/al_CSVReader.hpp"
+#include "al/math/al_Random.hpp"
 
 using namespace al;
 using namespace std;
@@ -59,6 +60,60 @@ typedef struct
 {
   double val[years + 2];
 } co2Types;
+
+// CO2 emission parts
+
+struct Particle {
+  Vec3f pos, vel, acc;
+  int age = 0;
+
+  void update(int ageInc) {
+    vel += acc;
+    pos += vel;
+    age += ageInc;
+  }
+};
+template <int N>
+
+struct Emitter {
+  Particle particles[N];
+  int tap = 0;
+
+  Emitter() {
+    for (auto& p : particles) p.age = N;
+  }
+
+  template <int M>
+  void update() {
+    for (auto& p : particles) p.update(M);
+
+    for (int i = 0; i < M; ++i) {
+      auto& p = particles[tap];
+
+      // fountain
+      // if (al::rnd::prob(0.80)) 
+      {
+        p.vel.set(al::rnd::gaussian()*0.01, al::rnd::gaussian()*0.01,
+                  al::rnd::uniform(0.01));
+        p.acc.set(0, 0, -0.001);
+
+        // spray
+      } 
+      // else {
+      //   p.vel.set(al::rnd::uniformS(0.01), al::rnd::uniformS(0.01),
+      //             al::rnd::uniformS(0.01));
+      //   p.acc.set(0, 0, 0);
+      // }
+      p.pos.set(0, 0, 0);
+
+      p.age = 0;
+      ++tap;
+      if (tap >= N) tap = 0;
+    }
+  }
+
+  int size() { return N; }
+};
 
 struct SensoriumApp : public DistributedAppWithState<State>
 {
@@ -129,6 +184,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
   FBO renderTarget;
   Texture rendered;
   float timer = 0;
+  // CO2
+  Emitter<1000> emission;
+  Mesh emission_mesh;
 
   void updateFBO(int w, int h) {
     rendered.create2D(w, h);
@@ -294,7 +352,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
       gui = &guiDomain->newGUI();
 
       std::string displayText = "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
-      *gui << lat << lon << radius << lux << year << gain;
+      // *gui << lat << lon << radius << lux << year << gain;
+      *gui << year;
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
       *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2;
@@ -946,6 +1005,17 @@ struct SensoriumApp : public DistributedAppWithState<State>
       //     }
       //   }
       // }
+      // CO2 Emission animate
+      emission.update<100>();
+      emission_mesh.reset();
+      emission_mesh.primitive(Mesh::POINTS);
+      for (int i = 0; i < emission.size(); ++i) {
+        Particle& p = emission.particles[i];
+        float age = float(p.age) / emission.size();
+
+        emission_mesh.vertex(p.pos);
+        emission_mesh.color(HSV(0.6, al::rnd::uniform(0.1), (1 - age) * 0.4));
+      }
 
       // Set light position
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
@@ -1118,6 +1188,20 @@ struct SensoriumApp : public DistributedAppWithState<State>
       }
       // lineTexture.unbind();
       // renderTarget.unbind();  /////////////////////////////////////////////
+
+      // g.blending(true);
+      // g.blendAdd();
+      // for (int nation = 0; nation < num_county; nation++){
+      
+      {
+        int nation =1;
+        g.pushMatrix();
+        g.pointSize(2.5);
+        g.translate(1 , 0 , 2);
+        // g.color(HSV());
+        g.draw(emission_mesh);
+        g.popMatrix();
+      }
     }
   }
 
