@@ -26,93 +26,6 @@ static const int stressors = 12;   // Total number of stressors
 static const int num_cloud = 3;    // Total number of stressors
 static const int num_county = 187; // Total number of stressors
 
-const char* vertex = R"(
-#version 400
-
-layout (location = 0) in vec3 vertexPosition;
-layout (location = 1) in vec4 vertexColor;
-
-uniform mat4 al_ModelViewMatrix;
-uniform mat4 al_ProjectionMatrix;
-
-out Vertex {
-  vec4 color;
-} vertex;
-
-void main() {
-  gl_Position = al_ModelViewMatrix * vec4(vertexPosition, 1.0);
-  vertex.color = vertexColor;
-}
-)";
-const char* fragment = R"(
-#version 400
-
-in Fragment {
-  vec4 color;
-  vec2 textureCoordinate;
-} fragment;
-
-uniform sampler2D alphaTexture;
-
-layout (location = 0) out vec4 fragmentColor;
-
-void main() {
-  // use the first 3 components of the color (xyz is rgb), but take the alpha value from the texture
-  //
-  fragmentColor = vec4(fragment.color.xyz, texture(alphaTexture, fragment.textureCoordinate));
-}
-)";
-const char* geometry = R"(
-#version 400
-
-// take in a point and output a triangle strip with 4 vertices (aka a "quad")
-//
-layout (points) in;
-layout (triangle_strip, max_vertices = 4) out;
-
-uniform mat4 al_ProjectionMatrix;
-
-// this uniform is *not* passed in automatically by AlloLib; do it manually
-//
-uniform float halfSize;
-
-in Vertex {
-  vec4 color;
-} vertex[];
-
-out Fragment {
-  vec4 color;
-  vec2 textureCoordinate;
-} fragment;
-
-void main() {
-  mat4 m = al_ProjectionMatrix; // rename to make lines shorter
-  vec4 v = gl_in[0].gl_Position; // al_ModelViewMatrix * gl_Position
-
-  gl_Position = m * (v + vec4(-halfSize, -halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(0.0, 0.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  gl_Position = m * (v + vec4(halfSize, -halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(1.0, 0.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  gl_Position = m * (v + vec4(-halfSize, halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(0.0, 1.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  gl_Position = m * (v + vec4(halfSize, halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(1.0, 1.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  EndPrimitive();
-}
-)";
-
 string slurp(string fileName) {
   fstream file(fileName);
   string returnValue = "";
@@ -178,14 +91,11 @@ struct Emitter {
       auto& p = particles[tap];
       // if (al::rnd::prob(0.80)) 
       { // co2 particle spread speed
-        // p.vel.set(al::rnd::gaussian()* 0.001, al::rnd::gaussian() * 0.001,
-        //           al::rnd::uniform(0.008, 0.01));
-        // p.acc.set(al::rnd::gaussian()*0.0001, al::rnd::gaussian()*0.0001, -0.0003);
-        p.vel.set(al::rnd::gaussian()* 0.003, al::rnd::gaussian() * 0.003,
-                  al::rnd::gaussian()* 0.003);
-        p.acc.set(al::rnd::gaussian()*0.0003, al::rnd::gaussian()*0.0003, al::rnd::gaussian()*0.0003);
+        p.vel.set(al::rnd::gaussian()* 0.001, al::rnd::gaussian() * 0.001,
+                  al::rnd::uniform(0.008, 0.01));
+        p.acc.set(al::rnd::gaussian()*0.0001, al::rnd::gaussian()*0.0001, -0.0003);
       } 
-      p.pos.set(al::rnd::gaussian()*1, al::rnd::gaussian()*1, 0);
+      p.pos.set(al::rnd::gaussian()*0.5, al::rnd::gaussian()*0.5, 0);
       p.age = 0;
       ++tap;
       if (tap >= N) tap = 0;
@@ -226,8 +136,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ParameterBool s_cloud_storm{"Clouds - Storm", "", 0.0};
   ParameterBool s_cloud_eu{"Clouds - EU", "", 0.0};
   ParameterBool s_co2{"CO2", "", 0.0};
-  ParameterBool s_nav{"Explore Globe", "", 0.0};
-  ParameterBool s_years{"2003 - 2013", "", 0.0};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   // Image oceanData[years][stressors];
@@ -263,14 +171,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ShaderProgram lineShader;
   Texture pointTexture;
   Texture lineTexture;
-  Texture texture; // co2
-  ShaderProgram shader; //co2
-
   FBO renderTarget;
   Texture rendered;
   float timer = 0;
   // CO2
-  Emitter<500> emission;
+  Emitter<1000> emission;
   Mesh emission_mesh;
 
   void updateFBO(int w, int h) {
@@ -438,8 +343,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
       std::string displayText = "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
       // *gui << lat << lon << radius << lux << year << gain;
-      *gui << year; 
-      *gui << s_years << s_nav; 
+      *gui << year;
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
       *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2;
@@ -479,13 +383,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
                                                         cos(lon.get() / 180.0 * M_PI)));
                                     nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
-    s_years.registerChangeCallback([&](int value){
-      if (value){
-          state().molph = !state().molph;
-          year = 2003;
-          s_years.set(0);
-      } 
-    });
     // Bring ocean data (image)
     // 0. SST
     std::cout << "Start loading CHI data " << std::endl;
@@ -1002,13 +899,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
     reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
     reverb.damping(0.5f);   // High-frequency damping, in [0,1]
     reverb.decay(0.6f);     // Tail decay factor, in [0,1]
-
-//////////////// Shader
-    // use a texture to control the alpha channel of each particle
-    //
-    texture.create2D(250, 250, Texture::R8, Texture::RED, Texture::SHORT);
-    int Nx = texture.width();
-    int Ny = texture.height();
+    // shader    
+    pointTexture.create2D(256, 256, Texture::R8, Texture::RED, Texture::SHORT);
+    int Nx = pointTexture.width();
+    int Ny = pointTexture.height();
     std::vector<short> alpha;
     alpha.resize(Nx * Ny);
     for (int j = 0; j < Ny; ++j) {
@@ -1020,14 +914,20 @@ struct SensoriumApp : public DistributedAppWithState<State>
         alpha[j * Nx + i] = m;
       }
     }
-    texture.submit(&alpha[0]);
-
-    // compile and link the three shaders
-    //
-    shader.compile(vertex, fragment, geometry);
-////////////
-
-
+    pointTexture.submit(&alpha[0]);
+    lineTexture.create1D(256, Texture::R8, Texture::RED, Texture::SHORT);
+    std::vector<short> beta;
+    beta.resize(lineTexture.width());
+    for (int i = 0; i < beta.size(); ++i) {
+      beta[i] = alpha[128 * beta.size() + i];
+    }
+    lineTexture.submit(&beta[0]);
+    pointShader.compile(slurp("data/shaders/point-vertex.glsl"),
+                        slurp("data/shaders/point-fragment.glsl"),
+                        slurp("data/shaders/point-geometry.glsl"));
+    lineShader.compile(slurp("data/shaders/line-vertex.glsl"),
+                       slurp("data/shaders/line-fragment.glsl"),
+                       slurp("data/shaders/line-geometry.glsl"));
   }
 
   void onAnimate(double dt) override
@@ -1105,7 +1005,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
         emission_mesh.vertex(p.pos);
         // emission_mesh.color(HSV(al::rnd::uniform(1.), al::rnd::uniform(0.7), (1 - age) * 0.8));
-        emission_mesh.color(HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 - 0.1*age) * 0.5));
+        emission_mesh.color(HSV(al::rnd::uniform(0.2), al::rnd::uniform(1.3), 1));
       }
 
       // Set light position
@@ -1115,15 +1015,10 @@ struct SensoriumApp : public DistributedAppWithState<State>
       if (state().molph)
       {
         year = year + 3 * dt;
-        if (year == 2013)
+        if (year > 2013)
         {
           year = 2013;
-          state().molph = false;
-          s_years.set(0);
         }
-      }
-      if (s_nav){
-        nav().moveR(0.003);        
       }
       //  audio
       mFilter.freq(30 * (1 + 10 / (radius + 3)) * (year - 2000));
@@ -1279,7 +1174,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       //   g.color(HSV(log2(1+co2),0.4+log2(1+co2),0.4+log2(1+co2)));
       //   g.pointSize(10*log2(1+co2));
       //   g.draw(co2_mesh[nation]); // only needed if we go inside the earth
-      //   // g.scale(co2* 0.002);
+      //   // g.scale(co2* 0.002);ı
       //   g.popMatrix();
       // }
       // lineTexture.unbind();
@@ -1287,32 +1182,23 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
       // g.blending(true);
       // g.blendAdd();
-
-      texture.bind();
-      g.meshColor();
-      g.blendTrans();
-      g.blending(true);
-      g.depthTesting(true);
       for (int nation = 0; nation < num_county; nation++)
       {
         float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
+        g.meshColor();
         g.pushMatrix();
         g.translate(co2_pos[nation]*2.01);
         // g.translate(0,0,3);
-        g.scale(co2*0.01, co2*0.01 , co2*0.01);
+
+        // g.scale(0.1);
+        // g.scale(1, 1 , 1);
         g.rotate(-90, Vec3f(0,1,0));
         g.rotate(nation_lon[nation], Vec3f(0,1,0));
         g.rotate(nation_lat[nation], Vec3f(1,0,1));
-        // g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
-        g.shader(shader);
-        float halfSize = 0.005*co2;
-        g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
-        // g.shader().uniform("halfSize", 0.1);
-        // g.pointSize(co2);
+        g.pointSize(co2 / radius.get());
         g.draw(emission_mesh);
         g.popMatrix();
       }
-      texture.unbind();
     }
   }
 
@@ -1389,42 +1275,42 @@ struct SensoriumApp : public DistributedAppWithState<State>
       morphProgress = morphDuration;
       hoverDuration = 0;
       return true;
-    // case 'u':
-    //   state().swtch[0] = !state().swtch[0];
-    //   return true;
-    // case 'i':
-    //   state().swtch[1] = !state().swtch[1];
-    //   return true;
-    // case 'o':
-    //   state().swtch[2] = !state().swtch[2];
-    //   return true;
-    // case 'j':
-    //   state().swtch[3] = !state().swtch[3];
-    //   return true;
-    // case 'k':
-    //   state().swtch[4] = !state().swtch[4];
-    //   return true;
-    // case 'l':
-    //   state().swtch[5] = !state().swtch[5];
-    //   return true;
-    // case 'm':
-    //   state().swtch[6] = !state().swtch[6];
-    //   return true;
-    // case ',':
-    //   state().swtch[7] = !state().swtch[7];
-    //   return true;
-    // case '.':
-    //   state().swtch[8] = !state().swtch[8];
-    //   return true;
-    // case '/':
-    //   state().swtch[9] = !state().swtch[9];
-    //   return true;
-    // case ';':
-    //   state().swtch[10] = !state().swtch[10];
-    //   return true;
-    // case 'n':
-    //   state().swtch[11] = !state().swtch[11];
-    //   return true;
+    case 'u':
+      state().swtch[0] = !state().swtch[0];
+      return true;
+    case 'i':
+      state().swtch[1] = !state().swtch[1];
+      return true;
+    case 'o':
+      state().swtch[2] = !state().swtch[2];
+      return true;
+    case 'j':
+      state().swtch[3] = !state().swtch[3];
+      return true;
+    case 'k':
+      state().swtch[4] = !state().swtch[4];
+      return true;
+    case 'l':
+      state().swtch[5] = !state().swtch[5];
+      return true;
+    case 'm':
+      state().swtch[6] = !state().swtch[6];
+      return true;
+    case ',':
+      state().swtch[7] = !state().swtch[7];
+      return true;
+    case '.':
+      state().swtch[8] = !state().swtch[8];
+      return true;
+    case '/':
+      state().swtch[9] = !state().swtch[9];
+      return true;
+    case ';':
+      state().swtch[10] = !state().swtch[10];
+      return true;
+    case 'n':
+      state().swtch[11] = !state().swtch[11];
+      return true;
     case '9':
       state().molph = !state().molph;
       year = 2003;
