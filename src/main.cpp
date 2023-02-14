@@ -93,19 +93,11 @@ struct Emitter {
       // fountain
       // if (al::rnd::prob(0.80)) 
       {
-        p.vel.set(al::rnd::gaussian()*0.01, al::rnd::gaussian()*0.01,
-                  al::rnd::uniform(0.01));
-        p.acc.set(0, 0, -0.001);
-
-        // spray
+        p.vel.set(al::rnd::uniform(-0.001,0.001), al::rnd::uniform(-0.001,0.001),
+                  al::rnd::uniform(0.01, 0.012));
+        p.acc.set(al::rnd::gaussian()*0.0001, al::rnd::gaussian()*0.0001, -0.0001);
       } 
-      // else {
-      //   p.vel.set(al::rnd::uniformS(0.01), al::rnd::uniformS(0.01),
-      //             al::rnd::uniformS(0.01));
-      //   p.acc.set(0, 0, 0);
-      // }
-      p.pos.set(0, 0, 0);
-
+      p.pos.set(al::rnd::gaussian()*0.02, al::rnd::gaussian()*0.02, 0);
       p.age = 0;
       ++tap;
       if (tap >= N) tap = 0;
@@ -1006,7 +998,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       //   }
       // }
       // CO2 Emission animate
-      emission.update<100>();
+      emission.update<5>();
       emission_mesh.reset();
       emission_mesh.primitive(Mesh::POINTS);
       for (int i = 0; i < emission.size(); ++i) {
@@ -1014,7 +1006,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
         float age = float(p.age) / emission.size();
 
         emission_mesh.vertex(p.pos);
-        emission_mesh.color(HSV(0.6, al::rnd::uniform(0.1), (1 - age) * 0.4));
+        emission_mesh.color(HSV(0.6, al::rnd::uniform(0.1), (1 - age) * 0.2));
       }
 
       // Set light position
