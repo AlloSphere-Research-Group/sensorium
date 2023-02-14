@@ -26,6 +26,93 @@ static const int stressors = 12;   // Total number of stressors
 static const int num_cloud = 3;    // Total number of stressors
 static const int num_county = 187; // Total number of stressors
 
+const char* vertex = R"(
+#version 400
+
+layout (location = 0) in vec3 vertexPosition;
+layout (location = 1) in vec4 vertexColor;
+
+uniform mat4 al_ModelViewMatrix;
+uniform mat4 al_ProjectionMatrix;
+
+out Vertex {
+  vec4 color;
+} vertex;
+
+void main() {
+  gl_Position = al_ModelViewMatrix * vec4(vertexPosition, 1.0);
+  vertex.color = vertexColor;
+}
+)";
+const char* fragment = R"(
+#version 400
+
+in Fragment {
+  vec4 color;
+  vec2 textureCoordinate;
+} fragment;
+
+uniform sampler2D alphaTexture;
+
+layout (location = 0) out vec4 fragmentColor;
+
+void main() {
+  // use the first 3 components of the color (xyz is rgb), but take the alpha value from the texture
+  //
+  fragmentColor = vec4(fragment.color.xyz, texture(alphaTexture, fragment.textureCoordinate));
+}
+)";
+const char* geometry = R"(
+#version 400
+
+// take in a point and output a triangle strip with 4 vertices (aka a "quad")
+//
+layout (points) in;
+layout (triangle_strip, max_vertices = 4) out;
+
+uniform mat4 al_ProjectionMatrix;
+
+// this uniform is *not* passed in automatically by AlloLib; do it manually
+//
+uniform float halfSize;
+
+in Vertex {
+  vec4 color;
+} vertex[];
+
+out Fragment {
+  vec4 color;
+  vec2 textureCoordinate;
+} fragment;
+
+void main() {
+  mat4 m = al_ProjectionMatrix; // rename to make lines shorter
+  vec4 v = gl_in[0].gl_Position; // al_ModelViewMatrix * gl_Position
+
+  gl_Position = m * (v + vec4(-halfSize, -halfSize, 0.0, 0.0));
+  fragment.textureCoordinate = vec2(0.0, 0.0);
+  fragment.color = vertex[0].color;
+  EmitVertex();
+
+  gl_Position = m * (v + vec4(halfSize, -halfSize, 0.0, 0.0));
+  fragment.textureCoordinate = vec2(1.0, 0.0);
+  fragment.color = vertex[0].color;
+  EmitVertex();
+
+  gl_Position = m * (v + vec4(-halfSize, halfSize, 0.0, 0.0));
+  fragment.textureCoordinate = vec2(0.0, 1.0);
+  fragment.color = vertex[0].color;
+  EmitVertex();
+
+  gl_Position = m * (v + vec4(halfSize, halfSize, 0.0, 0.0));
+  fragment.textureCoordinate = vec2(1.0, 1.0);
+  fragment.color = vertex[0].color;
+  EmitVertex();
+
+  EndPrimitive();
+}
+)";
+
 string slurp(string fileName) {
   fstream file(fileName);
   string returnValue = "";
@@ -89,15 +176,16 @@ struct Emitter {
 
     for (int i = 0; i < M; ++i) {
       auto& p = particles[tap];
-
-      // fountain
       // if (al::rnd::prob(0.80)) 
-      {
-        p.vel.set(al::rnd::uniform(-0.001,0.001), al::rnd::uniform(-0.001,0.001),
-                  al::rnd::uniform(0.01, 0.012));
-        p.acc.set(al::rnd::gaussian()*0.0001, al::rnd::gaussian()*0.0001, -0.0001);
+      { // co2 particle spread speed
+        // p.vel.set(al::rnd::gaussian()* 0.001, al::rnd::gaussian() * 0.001,
+        //           al::rnd::uniform(0.008, 0.01));
+        // p.acc.set(al::rnd::gaussian()*0.0001, al::rnd::gaussian()*0.0001, -0.0003);
+        p.vel.set(al::rnd::gaussian()* 0.003, al::rnd::gaussian() * 0.003,
+                  al::rnd::gaussian()* 0.003);
+        p.acc.set(al::rnd::gaussian()*0.0003, al::rnd::gaussian()*0.0003, al::rnd::gaussian()*0.0003);
       } 
-      p.pos.set(al::rnd::gaussian()*0.02, al::rnd::gaussian()*0.02, 0);
+      p.pos.set(al::rnd::gaussian()*1, al::rnd::gaussian()*1, 0);
       p.age = 0;
       ++tap;
       if (tap >= N) tap = 0;
@@ -173,11 +261,14 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ShaderProgram lineShader;
   Texture pointTexture;
   Texture lineTexture;
+  Texture texture; // co2
+  ShaderProgram shader; //co2
+
   FBO renderTarget;
   Texture rendered;
   float timer = 0;
   // CO2
-  Emitter<1000> emission;
+  Emitter<500> emission;
   Mesh emission_mesh;
 
   void updateFBO(int w, int h) {
@@ -901,10 +992,13 @@ struct SensoriumApp : public DistributedAppWithState<State>
     reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
     reverb.damping(0.5f);   // High-frequency damping, in [0,1]
     reverb.decay(0.6f);     // Tail decay factor, in [0,1]
-    // shader    
-    pointTexture.create2D(256, 256, Texture::R8, Texture::RED, Texture::SHORT);
-    int Nx = pointTexture.width();
-    int Ny = pointTexture.height();
+
+//////////////// Shader
+    // use a texture to control the alpha channel of each particle
+    //
+    texture.create2D(250, 250, Texture::R8, Texture::RED, Texture::SHORT);
+    int Nx = texture.width();
+    int Ny = texture.height();
     std::vector<short> alpha;
     alpha.resize(Nx * Ny);
     for (int j = 0; j < Ny; ++j) {
@@ -916,20 +1010,14 @@ struct SensoriumApp : public DistributedAppWithState<State>
         alpha[j * Nx + i] = m;
       }
     }
-    pointTexture.submit(&alpha[0]);
-    lineTexture.create1D(256, Texture::R8, Texture::RED, Texture::SHORT);
-    std::vector<short> beta;
-    beta.resize(lineTexture.width());
-    for (int i = 0; i < beta.size(); ++i) {
-      beta[i] = alpha[128 * beta.size() + i];
-    }
-    lineTexture.submit(&beta[0]);
-    pointShader.compile(slurp("data/shaders/point-vertex.glsl"),
-                        slurp("data/shaders/point-fragment.glsl"),
-                        slurp("data/shaders/point-geometry.glsl"));
-    lineShader.compile(slurp("data/shaders/line-vertex.glsl"),
-                       slurp("data/shaders/line-fragment.glsl"),
-                       slurp("data/shaders/line-geometry.glsl"));
+    texture.submit(&alpha[0]);
+
+    // compile and link the three shaders
+    //
+    shader.compile(vertex, fragment, geometry);
+////////////
+
+
   }
 
   void onAnimate(double dt) override
@@ -1006,7 +1094,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
         float age = float(p.age) / emission.size();
 
         emission_mesh.vertex(p.pos);
-        emission_mesh.color(HSV(0.6, al::rnd::uniform(0.7), (1 - age) * 0.8));
+        // emission_mesh.color(HSV(al::rnd::uniform(1.), al::rnd::uniform(0.7), (1 - age) * 0.8));
+        emission_mesh.color(HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 - 0.1*age) * 0.5));
       }
 
       // Set light position
@@ -1183,21 +1272,32 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
       // g.blending(true);
       // g.blendAdd();
+
+      texture.bind();
+      g.meshColor();
+      g.blendTrans();
+      g.blending(true);
+      g.depthTesting(true);
       for (int nation = 0; nation < num_county; nation++)
       {
         float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
-        g.meshColor();
         g.pushMatrix();
         g.translate(co2_pos[nation]*2.01);
-        // g.scale(co2*0.01, co2*0.003 , co2*0.01);
-        g.rotate(90, Vec3f(0,1,0));
+        // g.translate(0,0,3);
+        g.scale(co2*0.01, co2*0.01 , co2*0.01);
+        g.rotate(-90, Vec3f(0,1,0));
         g.rotate(nation_lon[nation], Vec3f(0,1,0));
         g.rotate(nation_lat[nation], Vec3f(1,0,1));
-        // g.pointSize(1*log2(1+co2));
-        g.pointSize(2);
+        // g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
+        g.shader(shader);
+        float halfSize = 0.005*co2;
+        g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
+        // g.shader().uniform("halfSize", 0.1);
+        // g.pointSize(co2);
         g.draw(emission_mesh);
         g.popMatrix();
       }
+      texture.unbind();
     }
   }
 
