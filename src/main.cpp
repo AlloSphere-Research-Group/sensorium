@@ -226,6 +226,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ParameterBool s_cloud_storm{"Clouds - Storm", "", 0.0};
   ParameterBool s_cloud_eu{"Clouds - EU", "", 0.0};
   ParameterBool s_co2{"CO2", "", 0.0};
+  ParameterBool s_nav{"Navigate", "", 0.0};
+  ParameterBool s_years{"2003 - 2013", "", 0.0};
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   // Image oceanData[years][stressors];
@@ -436,7 +438,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
       std::string displayText = "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
       // *gui << lat << lon << radius << lux << year << gain;
-      *gui << year;
+      *gui << year; 
+      *gui << s_years; 
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
       *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2;
@@ -476,6 +479,13 @@ struct SensoriumApp : public DistributedAppWithState<State>
                                                         cos(lon.get() / 180.0 * M_PI)));
                                     nav().faceToward(Vec3d(0), Vec3d(0, 1, 0)); });
 
+    s_years.registerChangeCallback([&](int value){
+      if (value){
+          state().molph = !state().molph;
+          year = 2003;
+          s_years.set(0);
+      } 
+    });
     // Bring ocean data (image)
     // 0. SST
     std::cout << "Start loading CHI data " << std::endl;
@@ -1105,9 +1115,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
       if (state().molph)
       {
         year = year + 3 * dt;
-        if (year > 2013)
+        if (year == 2013)
         {
           year = 2013;
+          state().molph = false;
+          s_years.set(0);
         }
       }
       //  audio
