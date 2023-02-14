@@ -1006,7 +1006,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
         float age = float(p.age) / emission.size();
 
         emission_mesh.vertex(p.pos);
-        emission_mesh.color(HSV(0.6, al::rnd::uniform(0.1), (1 - age) * 0.2));
+        emission_mesh.color(HSV(0.6, al::rnd::uniform(0.7), (1 - age) * 0.8));
       }
 
       // Set light position
@@ -1152,45 +1152,49 @@ struct SensoriumApp : public DistributedAppWithState<State>
       // gl::blendMode(GL_SRC_COLOR,GL_ONE,GL_FUNC_ADD);
       // lineTexture.bind();
       // g.shader(lineShader);
-      for (int nation = 0; nation < num_county; nation++)
-      {
-        // co2_mesh[nation].primitive(Mesh::LINES);
-        float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
-        // g.blendTrans();
-        g.blending(true);
-        g.blendAdd();
-        g.pushMatrix();
-        g.shader(pointShader);
-        g.shader().uniform("pointSize", 200*log2(1+co2));
-        co2_mesh[nation].reset();
-        co2_mesh[nation].primitive(Mesh::POINTS);
-        for (unsigned k = 0; k < 100; k++)
-        {
-          // float flunctuation = k * 0.0001* sin(0.1 * k / M_PI + timer );
-          co2_mesh[nation].vertex(co2_pos[nation]*2 + co2_pos[nation]*co2 * 0.005 * k);
-            // + Vec3f(flunctuation, flunctuation, flunctuation));
-          co2_mesh[nation].texCoord(0.1, 0.1);
-        }
-        co2_mesh[nation].update();
-        g.color(HSV(log2(1+co2),0.4+log2(1+co2),0.4+log2(1+co2)));
-        g.pointSize(10*log2(1+co2));
-        g.draw(co2_mesh[nation]); // only needed if we go inside the earth
-        // g.scale(co2* 0.002);
-        g.popMatrix();
-      }
+      // for (int nation = 0; nation < num_county; nation++)
+      // {
+      //   // co2_mesh[nation].primitive(Mesh::LINES);
+      //   float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
+      //   // g.blendTrans();
+      //   g.blending(true);
+      //   g.blendAdd();
+      //   g.pushMatrix();
+      //   g.shader(pointShader);
+      //   g.shader().uniform("pointSize", 200*log2(1+co2));
+      //   co2_mesh[nation].reset();
+      //   co2_mesh[nation].primitive(Mesh::POINTS);
+      //   for (unsigned k = 0; k < 100; k++)
+      //   {
+      //     // float flunctuation = k * 0.0001* sin(0.1 * k / M_PI + timer );
+      //     co2_mesh[nation].vertex(co2_pos[nation]*2 + co2_pos[nation]*co2 * 0.005 * k);
+      //       // + Vec3f(flunctuation, flunctuation, flunctuation));
+      //     co2_mesh[nation].texCoord(0.1, 0.1);
+      //   }
+      //   co2_mesh[nation].update();
+      //   g.color(HSV(log2(1+co2),0.4+log2(1+co2),0.4+log2(1+co2)));
+      //   g.pointSize(10*log2(1+co2));
+      //   g.draw(co2_mesh[nation]); // only needed if we go inside the earth
+      //   // g.scale(co2* 0.002);
+      //   g.popMatrix();
+      // }
       // lineTexture.unbind();
       // renderTarget.unbind();  /////////////////////////////////////////////
 
       // g.blending(true);
       // g.blendAdd();
-      // for (int nation = 0; nation < num_county; nation++){
-      
+      for (int nation = 0; nation < num_county; nation++)
       {
-        int nation =1;
+        float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
+        g.meshColor();
         g.pushMatrix();
-        g.pointSize(2.5);
-        g.translate(1 , 0 , 2);
-        // g.color(HSV());
+        g.translate(co2_pos[nation]*2.01);
+        // g.scale(co2*0.01, co2*0.003 , co2*0.01);
+        g.rotate(90, Vec3f(0,1,0));
+        g.rotate(nation_lon[nation], Vec3f(0,1,0));
+        g.rotate(nation_lat[nation], Vec3f(1,0,1));
+        // g.pointSize(1*log2(1+co2));
+        g.pointSize(2);
         g.draw(emission_mesh);
         g.popMatrix();
       }
