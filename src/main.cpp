@@ -215,11 +215,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ParameterBool s_slr{"Sea level rise", "", 0.0};
   ParameterBool s_oa{"Ocean acidification", "", 0.0};
   ParameterBool s_sst{"Sea surface temperature", "", 0.0};
-  ParameterBool s_cf_pl{"Commercial fishing - pelagic low-bycatch", "", 0.0};
-  ParameterBool s_cf_ph{"Commercial fishing - pelagic high-bycatch", "", 0.0};
-  ParameterBool s_cf_dl{"Commercial fishing - demersal non-destructive high-bycatch", "", 0.0};
-  ParameterBool s_cf_dh{"Commercial fishing - demersal non-desctructive low-bycatch", "", 0.0};
-  ParameterBool s_cf_dd{"Commercial fishing - demersal destructive", "", 0.0};
+  ParameterBool s_cf_pl{"Fishing - Pelagic low-bycatch", "", 0.0};
+  ParameterBool s_cf_ph{"Fishing - Pelagic high-bycatch", "", 0.0};
+  ParameterBool s_cf_dl{"Fishing - Demersal non-destructive high-bycatch", "", 0.0};
+  ParameterBool s_cf_dh{"Fishing - Demersal non-desctructive low-bycatch", "", 0.0};
+  ParameterBool s_cf_dd{"Fishing - Demersal destructive", "", 0.0};
   ParameterBool a_f{"Artisanal fishing", "", 0.0};
   ParameterBool s_shp{"Shipping", "", 0.0};
   ParameterBool s_cloud{"Clouds", "", 0.0};
