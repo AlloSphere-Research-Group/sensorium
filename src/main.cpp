@@ -228,7 +228,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
   ParameterBool s_co2{"CO2", "", 0.0};
   ParameterBool s_nav{"Explore Globe", "", 0.0};
   ParameterBool s_years{"2003 - 2013", "", 0.0};
-
+  bool faceTo = true;
   GeoLoc sourceGeoLoc, targetGeoLoc;
   // Image oceanData[years][stressors];
   // Image cloudData[num_cloud];
@@ -1036,7 +1036,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
     if (isPrimary())
     {
       Vec3f point_you_want_to_see = Vec3f(0, 0, 0); // examplary point that you want to see
-      nav().faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.7);
+      if(faceTo)
+        nav().faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.7);
       if (morphProgress > 0)
       {
         morphProgress -= dt;
@@ -1388,6 +1389,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       targetGeoLoc.radius = 5;
       morphProgress = morphDuration;
       hoverDuration = 0;
+      return true;    
+    case '=':
+      faceTo = !faceTo;
       return true;
     // case 'u':
     //   state().swtch[0] = !state().swtch[0];
