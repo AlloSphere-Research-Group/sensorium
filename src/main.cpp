@@ -389,8 +389,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       std::strcpy(filename, ostr.str().c_str());
       oceanData = Image(filename);
-      // pic[d][0].primitive(Mesh::POINTS);
-      pic[d][0].primitive(Mesh::TRIANGLES);
+      pic[d][0].primitive(Mesh::POINTS);
 
       data_W = oceanData.width();
       data_H = oceanData.height();
