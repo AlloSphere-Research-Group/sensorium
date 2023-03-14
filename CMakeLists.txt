@@ -30,6 +30,44 @@ target_link_libraries(${APP_NAME} PRIVATE al)
 # replace ${PATH_TO_LIB_FILE} before linking other libraries
 # target_link_libraries(${APP_NAME} PRIVATE ${PATH_TO_LIB_FILE})
 
+set(FFMPEG_ROOT "/alloshare/code/kenny/ffmpeg_install/" CACHE STRING "Path to FFMPEG lib and include directories")
+message("Using FFMPEG at ${FFMPEG_ROOT}")
+
+# FFMPEG
+find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "include")
+find_library(AVCODEC_LIBRARY avcodec PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "lib")
+
+find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "include")
+find_library(AVFORMAT_LIBRARY avformat PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "lib")
+
+find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "include")
+find_library(AVUTIL_LIBRARY avutil PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "lib")
+
+find_path(AVDEVICE_INCLUDE_DIR libavdevice/avdevice.h PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "include")
+find_library(AVDEVICE_LIBRARY avdevice PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "lib")
+
+find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "include")
+find_library(SWSCALE_LIBRARY swscale PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "lib")
+
+# find_path(AVCODEC_INCLUDE_DIR libavcodec/avcodec.h PATHS ${FFMPEG_ROOT} NO_DEFAULT_PATH)
+# find_library(AVCODEC_LIBRARY avcodec PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "libavcodec" NO_DEFAULT_PATH)
+
+# find_path(AVFORMAT_INCLUDE_DIR libavformat/avformat.h PATHS ${FFMPEG_ROOT} NO_DEFAULT_PATH)
+# find_library(AVFORMAT_LIBRARY avformat PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "libavformat" NO_DEFAULT_PATH)
+
+# find_path(AVUTIL_INCLUDE_DIR libavutil/avutil.h PATHS ${FFMPEG_ROOT} NO_DEFAULT_PATH)
+# find_library(AVUTIL_LIBRARY avutil PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "libavutil" NO_DEFAULT_PATH)
+
+# find_path(AVDEVICE_INCLUDE_DIR libavdevice/avdevice.h PATHS ${FFMPEG_ROOT} NO_DEFAULT_PATH)
+# find_library(AVDEVICE_LIBRARY avdevice PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "libavdevice" NO_DEFAULT_PATH)
+
+# find_path(SWSCALE_INCLUDE_DIR libswscale/swscale.h PATHS ${FFMPEG_ROOT} NO_DEFAULT_PATH)
+# find_library(SWSCALE_LIBRARY swscale PATHS ${FFMPEG_ROOT} PATH_SUFFIXES "libswscale" NO_DEFAULT_PATH)
+
+target_link_libraries(${APP_NAME} PRIVATE "${AVCODEC_LIBRARY}" "${AVFORMAT_LIBRARY}" "${AVUTIL_LIBRARY}" "${ADEVICE_LIBRARY}" "${SWSCALE_LIBRARY}")
+target_include_directories(${APP_NAME} PRIVATE ${AVCODEC_INCLUDE_DIR} ${AVFORMAT_INCLUDE_DIR} ${AVUTIL_INCLUDE_DIR}  ${AVDEVICE_INCLUDE_DIR} ${SWSCALE_INCLUDE_PATH})
+
+
 # binaries are put into the ./bin directory by default
 set_target_properties(${APP_NAME} PROPERTIES
   CXX_STANDARD 14
