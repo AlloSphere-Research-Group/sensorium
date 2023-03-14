@@ -192,6 +192,11 @@ struct OceanDataViewer {
   ParameterBool s_years{"2003 - 2013", "", 0.0};
 
   bool faceTo = true;
+  bool animateCam = false;
+  Pose navTarget;
+  float anim_speed = 0.0;
+  float anim_target_speed = 0.004;
+
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
   // Image oceanData[years][stressors];
@@ -419,41 +424,61 @@ struct OceanDataViewer {
           Vec3f(0, 0, 0); // examplary point that you want to see
       if (faceTo)
         nav.faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.7);
-      if (morphProgress > 0) {
-        morphProgress -= dt;
-        if (morphProgress < 0) {
-          morphProgress = 0;
-          morphDuration = defaultMorph;
-          hoverDuration = defaultHover;
-        }
 
-        lat.set(targetGeoLoc.lat + (sourceGeoLoc.lat - targetGeoLoc.lat) *
-                                       (morphProgress / morphDuration));
-        lon.set(targetGeoLoc.lon + (sourceGeoLoc.lon - targetGeoLoc.lon) *
-                                       (morphProgress / morphDuration));
-        if (hoverDuration > 0) {
-          if (morphProgress + hoverDuration > morphDuration) {
-            radius.set(hoverHeight +
-                       (sourceGeoLoc.radius - hoverHeight) *
-                           (morphProgress - morphDuration + hoverDuration) /
-                           hoverDuration);
-          } else {
-            radius.set(targetGeoLoc.radius +
-                       (hoverHeight - targetGeoLoc.radius) *
-                           (morphProgress / (morphDuration - hoverDuration)));
-          }
-        } else {
-          radius.set(targetGeoLoc.radius +
-                     (sourceGeoLoc.radius - targetGeoLoc.radius) *
-                         (morphProgress / morphDuration));
+
+      if (animateCam) {
+        // easing on both in and out
+        // EaseIn(value, target, speed)
+        // if (animateCam == 1) {
+        anim_speed += EaseIn(anim_speed, anim_target_speed, anim_target_speed);
+        // } else {
+        //   anim_speed += EaseIn(anim_speed, 0.05, 0.05);
+        // }
+        nav.set(nav.lerp(navTarget, anim_speed));
+
+        // end animation when we get close enough
+        if ((nav.pos() - navTarget.pos()).mag() <= .1) {
+          anim_speed = 0;
+          animateCam = 0;
         }
-      } else {
+      }
+
+      // if (morphProgress > 0) {
+        
+      //   morphProgress -= dt;
+      //   if (morphProgress < 0) {
+      //     morphProgress = 0;
+      //     morphDuration = defaultMorph;
+      //     hoverDuration = defaultHover;
+      //   }
+
+      //   lat.set(targetGeoLoc.lat + (sourceGeoLoc.lat - targetGeoLoc.lat) *
+      //                                  (morphProgress / morphDuration));
+      //   lon.set(targetGeoLoc.lon + (sourceGeoLoc.lon - targetGeoLoc.lon) *
+      //                                  (morphProgress / morphDuration));
+      //   if (hoverDuration > 0) {
+      //     if (morphProgress + hoverDuration > morphDuration) {
+      //       radius.set(hoverHeight +
+      //                  (sourceGeoLoc.radius - hoverHeight) *
+      //                      (morphProgress - morphDuration + hoverDuration) /
+      //                      hoverDuration);
+      //     } else {
+      //       radius.set(targetGeoLoc.radius +
+      //                  (hoverHeight - targetGeoLoc.radius) *
+      //                      (morphProgress / (morphDuration - hoverDuration)));
+      //     }
+      //   } else {
+      //     radius.set(targetGeoLoc.radius +
+      //                (sourceGeoLoc.radius - targetGeoLoc.radius) *
+      //                    (morphProgress / morphDuration));
+      //   }
+      // } else {
         Vec3d pos = nav.pos();
         radius.setNoCalls(pos.mag());
         pos.normalize();
         lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
         lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
-      }
+      // }
       // To smooth transition between the years, use alpha value to be updated
       // using varying time morph_year = year - floor(year); if (morph_year)
       // {
@@ -653,16 +678,31 @@ struct OceanDataViewer {
     }
   }
 
+  float EaseIn(float _value, float _target, float _speed) {
+    float d = _target - _value;
+    float x = d * _speed;
+    return x;
+  }
+
   void setGeoTarget(float la, float lo, float r = 3.2, float duration = 4.0) {
-    sourceGeoLoc.lat = lat.get();
-    sourceGeoLoc.lon = lon.get();
-    sourceGeoLoc.radius = radius.get();
-    targetGeoLoc.lat = la;   // 53.54123998879464;
-    targetGeoLoc.lon = lo;   // 9.950943100405375;
-    targetGeoLoc.radius = r; // 3.2;
-    morphDuration = duration;
-    morphProgress = morphDuration;
-    hoverDuration = 0;
+    // sourceGeoLoc.lat = lat.get();
+    // sourceGeoLoc.lon = lon.get();
+    // sourceGeoLoc.radius = radius.get();
+    // targetGeoLoc.lat = la;   // 53.54123998879464;
+    // targetGeoLoc.lon = lo;   // 9.950943100405375;
+    // targetGeoLoc.radius = r; // 3.2;
+    // morphDuration = duration;
+    // morphProgress = morphDuration;
+    // hoverDuration = 0;
+    navTarget.pos(Vec3d(-r * cos(la / 180.0 * M_PI) *
+                          sin(lo / 180.0 * M_PI),
+                      r * sin(la / 180.0 * M_PI),
+                      -r * cos(la / 180.0 * M_PI) *
+                          cos(lo / 180.0 * M_PI)));
+
+    navTarget.faceToward(Vec3d(0), Vec3d(0, 1, 0));
+    animateCam = true;
+    anim_speed = anim_speed / 5;
   }
 
 
