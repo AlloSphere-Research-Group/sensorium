@@ -45,7 +45,19 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     oceanDataViewer.onCreate();
     oceanDataViewer.loadChiData();
 
-    videoPlayer.setVideoFile("data/video/boardwalk_preview_v3_-_more_extreme_flooding (2160p).mp4");
+    std::string dataPath;
+    if (sphere::isSphereMachine()) {
+      if (sphere::isRendererMachine()) {
+        dataPath = "/data/Sensorium/";
+      } else {
+        dataPath = "/Volumes/Data/Sensorium/";
+      }
+    } else {
+      // dataPath = "C:/Users/kenny/data/sensorium/";
+      dataPath = "data/";
+    }
+
+    videoPlayer.setVideoFile(dataPath + "video/boardwalk_preview_v3_-_more_extreme_flooding (2160p).mp4");
     videoPlayer.onCreate(state(), isPrimary());
 
 
