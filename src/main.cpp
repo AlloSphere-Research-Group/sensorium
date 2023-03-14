@@ -333,7 +333,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       *gui << s_years << s_nav; 
       *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
       *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
-      *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2;
+      *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
       // *gui << s_cf_dd << a_f // currently we don't have this data
       // *gui << s_ci << s_oc << s_np;
 
