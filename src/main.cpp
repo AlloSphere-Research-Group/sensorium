@@ -2,21 +2,8 @@
 // TODO :
 // - gradually fade in-out stressors
 
-#include <iostream>
-#include <string.h>
-#include "al/app/al_DistributedApp.hpp"
-#include "al/app/al_GUIDomain.hpp"
-#include "al/graphics/al_Image.hpp"
-#include "al_ext/statedistribution/al_CuttleboneDomain.hpp"
-#include "al/graphics/al_Shapes.hpp"
-#include "al/graphics/al_Light.hpp"
-#include "Gamma/Oscillator.h"
-#include "Gamma/Noise.h"
-#include "Gamma/Filter.h"
-#include "al/sound/al_Reverb.hpp"
-#include "al/io/al_CSVReader.hpp"
-#include "al/math/al_Random.hpp"
 
+#include "headers.hpp"
 using namespace al;
 using namespace std;
 using namespace gam;
@@ -26,103 +13,6 @@ static const int stressors = 12;   // Total number of stressors
 static const int num_cloud = 3;    // Total number of stressors
 static const int num_county = 187; // Total number of stressors
 
-const char* vertex = R"(
-#version 400
-
-layout (location = 0) in vec3 vertexPosition;
-layout (location = 1) in vec4 vertexColor;
-
-uniform mat4 al_ModelViewMatrix;
-uniform mat4 al_ProjectionMatrix;
-
-out Vertex {
-  vec4 color;
-} vertex;
-
-void main() {
-  gl_Position = al_ModelViewMatrix * vec4(vertexPosition, 1.0);
-  vertex.color = vertexColor;
-}
-)";
-const char* fragment = R"(
-#version 400
-
-in Fragment {
-  vec4 color;
-  vec2 textureCoordinate;
-} fragment;
-
-uniform sampler2D alphaTexture;
-
-layout (location = 0) out vec4 fragmentColor;
-
-void main() {
-  // use the first 3 components of the color (xyz is rgb), but take the alpha value from the texture
-  //
-  fragmentColor = vec4(fragment.color.xyz, texture(alphaTexture, fragment.textureCoordinate));
-}
-)";
-const char* geometry = R"(
-#version 400
-
-// take in a point and output a triangle strip with 4 vertices (aka a "quad")
-//
-layout (points) in;
-layout (triangle_strip, max_vertices = 4) out;
-
-uniform mat4 al_ProjectionMatrix;
-
-// this uniform is *not* passed in automatically by AlloLib; do it manually
-//
-uniform float halfSize;
-
-in Vertex {
-  vec4 color;
-} vertex[];
-
-out Fragment {
-  vec4 color;
-  vec2 textureCoordinate;
-} fragment;
-
-void main() {
-  mat4 m = al_ProjectionMatrix; // rename to make lines shorter
-  vec4 v = gl_in[0].gl_Position; // al_ModelViewMatrix * gl_Position
-
-  gl_Position = m * (v + vec4(-halfSize, -halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(0.0, 0.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  gl_Position = m * (v + vec4(halfSize, -halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(1.0, 0.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  gl_Position = m * (v + vec4(-halfSize, halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(0.0, 1.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  gl_Position = m * (v + vec4(halfSize, halfSize, 0.0, 0.0));
-  fragment.textureCoordinate = vec2(1.0, 1.0);
-  fragment.color = vertex[0].color;
-  EmitVertex();
-
-  EndPrimitive();
-}
-)";
-
-string slurp(string fileName) {
-  fstream file(fileName);
-  string returnValue = "";
-  while (file.good()) {
-    string line;
-    getline(file, line);
-    returnValue += line + "\n";
-  }
-  return returnValue;
-}
 
 struct State
 {
@@ -130,10 +20,14 @@ struct State
   bool swtch[stressors]{false};
   bool cloud_swtch[num_cloud]{false};
   bool molph{false};
+  bool co2_swtch{false};
   float lux;
   float year;
   float radius;
   int osc_click[10];
+  // Mesh emission_mesh;
+  Vec3f render_co2_pos[500];
+  Color render_co2_col[500];
 };
 
 struct GeoLoc
@@ -152,6 +46,7 @@ typedef struct
 
 struct Particle {
   Vec3f pos, vel, acc;
+  Color col;
   int age = 0;
 
   void update(int ageInc) {
@@ -176,11 +71,7 @@ struct Emitter {
 
     for (int i = 0; i < M; ++i) {
       auto& p = particles[tap];
-      // if (al::rnd::prob(0.80)) 
       { // co2 particle spread speed
-        // p.vel.set(al::rnd::gaussian()* 0.001, al::rnd::gaussian() * 0.001,
-        //           al::rnd::uniform(0.008, 0.01));
-        // p.acc.set(al::rnd::gaussian()*0.0001, al::rnd::gaussian()*0.0001, -0.0003);
         p.vel.set(al::rnd::gaussian()* 0.003, al::rnd::gaussian() * 0.003,
                   al::rnd::gaussian()* 0.003);
         p.acc.set(al::rnd::gaussian()*0.0003, al::rnd::gaussian()*0.0003, al::rnd::gaussian()*0.0003);
@@ -498,7 +389,9 @@ struct SensoriumApp : public DistributedAppWithState<State>
       char *filename = new char[ostr.str().length() + 1];
       std::strcpy(filename, ostr.str().c_str());
       oceanData = Image(filename);
-      pic[d][0].primitive(Mesh::POINTS);
+      // pic[d][0].primitive(Mesh::POINTS);
+      pic[d][0].primitive(Mesh::TRIANGLES);
+
       data_W = oceanData.width();
       data_H = oceanData.height();
       point_dist = 2.002 + 0.001 * stress;
@@ -1106,7 +999,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
 
         emission_mesh.vertex(p.pos);
         // emission_mesh.color(HSV(al::rnd::uniform(1.), al::rnd::uniform(0.7), (1 - age) * 0.8));
-        emission_mesh.color(HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 - 0.1*age) * 0.5));
+        p.col = HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 - 0.1*age) * 0.5);
+        emission_mesh.color(p.col);
       }
 
       // Set light position
@@ -1132,6 +1026,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       mFilter.type(LOW_PASS);
       reverb.decay(0.6f + 0.3 / (radius + 1)); // Tail decay factor, in [0,1]
 
+      // Assign shared states for renderers
       state().global_pose.set(nav());
       state().year = year;
       state().radius = radius;
@@ -1150,12 +1045,27 @@ struct SensoriumApp : public DistributedAppWithState<State>
       state().cloud_swtch[0] = s_cloud;
       state().cloud_swtch[1] = s_cloud_eu;
       state().cloud_swtch[2] = s_cloud_storm;
+      state().co2_swtch = s_co2;
+      for (int i = 0; i < emission.size(); ++i) {
+        Particle& p = emission.particles[i];
+        state().render_co2_pos[i] = p.pos;
+        state().render_co2_col[i] = p.col;
+      }
     }    // prim end
     else // renderer
     {
       nav().set(state().global_pose);
       light.pos(nav().pos().x, nav().pos().y, nav().pos().z);
       Light::globalAmbient({state().lux, state().lux, state().lux});
+      emission_mesh.reset();
+      emission_mesh.primitive(Mesh::POINTS);
+      for (int i = 0; i < emission.size(); ++i) {
+        Particle& p = emission.particles[i];
+        float age = float(p.age) / emission.size();
+        emission_mesh.vertex(state().render_co2_pos[i]);
+        emission_mesh.color(state().render_co2_col[i]);        
+      }
+
     }
   }
   void onSound(AudioIOData &io) override
@@ -1250,45 +1160,8 @@ struct SensoriumApp : public DistributedAppWithState<State>
       }
     }
     // Draw CO2
-    if (s_co2)
+    if (state().co2_swtch)
     {
-      // renderTarget.bind();  ///////////////////////////////////////////////
-      // gl::blending(true);
-      // gl::blendMode(GL_SRC_COLOR,GL_ONE,GL_FUNC_ADD);
-      // lineTexture.bind();
-      // g.shader(lineShader);
-      // for (int nation = 0; nation < num_county; nation++)
-      // {
-      //   // co2_mesh[nation].primitive(Mesh::LINES);
-      //   float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
-      //   // g.blendTrans();
-      //   g.blending(true);
-      //   g.blendAdd();
-      //   g.pushMatrix();
-      //   g.shader(pointShader);
-      //   g.shader().uniform("pointSize", 200*log2(1+co2));
-      //   co2_mesh[nation].reset();
-      //   co2_mesh[nation].primitive(Mesh::POINTS);
-      //   for (unsigned k = 0; k < 100; k++)
-      //   {
-      //     // float flunctuation = k * 0.0001* sin(0.1 * k / M_PI + timer );
-      //     co2_mesh[nation].vertex(co2_pos[nation]*2 + co2_pos[nation]*co2 * 0.005 * k);
-      //       // + Vec3f(flunctuation, flunctuation, flunctuation));
-      //     co2_mesh[nation].texCoord(0.1, 0.1);
-      //   }
-      //   co2_mesh[nation].update();
-      //   g.color(HSV(log2(1+co2),0.4+log2(1+co2),0.4+log2(1+co2)));
-      //   g.pointSize(10*log2(1+co2));
-      //   g.draw(co2_mesh[nation]); // only needed if we go inside the earth
-      //   // g.scale(co2* 0.002);
-      //   g.popMatrix();
-      // }
-      // lineTexture.unbind();
-      // renderTarget.unbind();  /////////////////////////////////////////////
-
-      // g.blending(true);
-      // g.blendAdd();
-
       texture.bind();
       g.meshColor();
       g.blendTrans();
@@ -1296,7 +1169,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       g.depthTesting(true);
       for (int nation = 0; nation < num_county; nation++)
       {
-        float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since large
+        float co2 = co2_level[nation][(int)state().year - 2003] * 0.000001; // precompute micro quantity since it's large number
         g.pushMatrix();
         g.translate(co2_pos[nation]*2.01);
         // g.translate(0,0,3);
@@ -1304,12 +1177,11 @@ struct SensoriumApp : public DistributedAppWithState<State>
         g.rotate(-90, Vec3f(0,1,0));
         g.rotate(nation_lon[nation], Vec3f(0,1,0));
         g.rotate(nation_lat[nation], Vec3f(1,0,1));
-        // g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
+        g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
         g.shader(shader);
         float halfSize = 0.005*co2;
         g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
-        // g.shader().uniform("halfSize", 0.1);
-        // g.pointSize(co2);
+        g.pointSize(co2);
         g.draw(emission_mesh);
         g.popMatrix();
       }
@@ -1393,42 +1265,6 @@ struct SensoriumApp : public DistributedAppWithState<State>
     case '=':
       faceTo = !faceTo;
       return true;
-    // case 'u':
-    //   state().swtch[0] = !state().swtch[0];
-    //   return true;
-    // case 'i':
-    //   state().swtch[1] = !state().swtch[1];
-    //   return true;
-    // case 'o':
-    //   state().swtch[2] = !state().swtch[2];
-    //   return true;
-    // case 'j':
-    //   state().swtch[3] = !state().swtch[3];
-    //   return true;
-    // case 'k':
-    //   state().swtch[4] = !state().swtch[4];
-    //   return true;
-    // case 'l':
-    //   state().swtch[5] = !state().swtch[5];
-    //   return true;
-    // case 'm':
-    //   state().swtch[6] = !state().swtch[6];
-    //   return true;
-    // case ',':
-    //   state().swtch[7] = !state().swtch[7];
-    //   return true;
-    // case '.':
-    //   state().swtch[8] = !state().swtch[8];
-    //   return true;
-    // case '/':
-    //   state().swtch[9] = !state().swtch[9];
-    //   return true;
-    // case ';':
-    //   state().swtch[10] = !state().swtch[10];
-    //   return true;
-    // case 'n':
-    //   state().swtch[11] = !state().swtch[11];
-    //   return true;
     case '9':
       state().molph = !state().molph;
       year = 2003;
