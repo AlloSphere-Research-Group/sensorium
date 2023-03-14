@@ -1199,7 +1199,7 @@ struct SensoriumApp : public DistributedAppWithState<State>
       targetGeoLoc.lat = 53.54123998879464;
       targetGeoLoc.lon = 9.950943100405375;
       targetGeoLoc.radius = 3.2;
-      morphDuration = 4.0;
+      morphDuration = 8.0;
       morphProgress = morphDuration;
       hoverDuration = 0;
       return true;
