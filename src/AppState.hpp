@@ -9,6 +9,9 @@ static const int num_county = 187; // Total number of stressors
 
 struct State {
   // video player
+  int videoLoadIndex;
+  bool videoPlaying;
+  bool videoRendering;
   double global_clock;
 
   // ocean data viewer

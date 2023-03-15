@@ -45,19 +45,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     oceanDataViewer.onCreate();
     // oceanDataViewer.loadChiData();
 
-    std::string dataPath;
-    if (sphere::isSphereMachine()) {
-      if (sphere::isRendererMachine()) {
-        dataPath = "/data/Sensorium/";
-      } else {
-        dataPath = "/Volumes/Data/Sensorium/";
-      }
-    } else {
-      // dataPath = "C:/Users/kenny/data/sensorium/";
-      dataPath = "data/";
-    }
-
-    videoPlayer.setVideoFile(dataPath + "video/boardwalk_preview_v3_-_more_extreme_flooding (2160p).mp4");
     videoPlayer.onCreate(state(), isPrimary());
 
 
@@ -67,6 +54,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       gui = &guiDomain->newGUI();
 
       oceanDataViewer.registerParams(gui, nav(), state());
+      videoPlayer.registerParams(gui, state());
     }
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
@@ -80,8 +68,10 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   void onSound(AudioIOData &io) override { oceanDataViewer.onSound(io); }
 
   void onDraw(Graphics &g) override {
-    oceanDataViewer.onDraw(g, nav(), state());
-    // videoPlayer.onDraw(g, isPrimary());
+    if(!state().videoRendering)
+      oceanDataViewer.onDraw(g, nav(), state());
+    
+    videoPlayer.onDraw(g, state(), isPrimary());
   }
 
   bool onKeyDown(const Keyboard &k) override {

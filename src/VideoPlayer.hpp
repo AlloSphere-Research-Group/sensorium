@@ -142,19 +142,64 @@ struct VideoPlayer {
   float exposure;
   bool uniformChanged{false};
 
-  VideoDecoder videoDecoder;
+  VideoDecoder videoDecoder[2];
   std::string videoFileToLoad;
-
-  bool playing{true};
+  bool videoLoaded[2]{false,false};
+  std::string dataPath;
 
   std::vector<MappedAudioFile> soundfiles;
   uint64_t samplesPlayed{0};
   int32_t audioDelay{0};
 
-  ParameterBool renderVideo{"renderVideo", "", 1.0};
+  ParameterBool renderVideo{"renderVideo", "", 0.0};
+  Trigger playBoardwalk{"Play Boardwalk", ""};
+  Trigger playOverfishing{"Play Overfishing", ""};
+
   ParameterBool windowed{"windowed", "", 0.0};
   ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, -4))};
   ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
+
+
+  void registerParams(ControlGUI *gui, State &state) {
+    *gui << renderVideo << playBoardwalk << playOverfishing;
+
+    renderVideo.registerChangeCallback([&](float value) {
+      state.global_clock = 0.0;
+      state.videoPlaying = false;
+      state.videoRendering = false;
+      state.videoLoadIndex = -1;
+    });
+
+    playBoardwalk.registerChangeCallback([&](float value) {
+      renderVideo.setNoCalls(1.0);
+      state.global_clock = 0.0;
+      state.videoPlaying = true;
+      state.videoRendering = true;
+      state.videoLoadIndex = 0;
+    });
+
+    playOverfishing.registerChangeCallback([&](float value) {
+      renderVideo.setNoCalls(1.0);
+      state.global_clock = 0.0;
+      state.videoPlaying = true;
+      state.videoRendering = true;
+      state.videoLoadIndex = 1;
+    });
+  }
+
+
+  void loadVideoFile(std::string videoFileUrl, int index) {
+    videoFileToLoad = dataPath + videoFileUrl;
+
+    if (!videoDecoder[index].load(videoFileToLoad.c_str())) {
+      if (videoFileToLoad.size() > 0) {
+        std::cerr << "Error loading video file" << std::endl;
+      }
+    }
+
+    videoDecoder[index].start();
+    videoLoaded[index] = true;
+  };
 
   void onInit(){
     exposure = 1.0f;
@@ -178,6 +223,17 @@ struct VideoPlayer {
   }
 
   void onCreate(State &state, bool isPrimary){
+    if (sphere::isSphereMachine()) {
+      if (sphere::isRendererMachine()) {
+        dataPath = "/data/Sensorium/video/";
+      } else {
+        dataPath = "/Volumes/Data/Sensorium/video/";
+      }
+    } else {
+      // dataPath = "C:/Users/kenny/data/sensorium/";
+      dataPath = "data/video/";
+    }
+
     // compile & initialize shader
     pano_shader.compile(pano_vert, pano_frag);
 
@@ -188,7 +244,8 @@ struct VideoPlayer {
 
     // TODO: temporarily disabled audio
     // if (!isPrimary()) {
-    videoDecoder.enableAudio(false);
+    for(int i=0; i < 2; i++)
+      videoDecoder[i].enableAudio(false);
     // }
 
     // if (isPrimary()) {
@@ -196,23 +253,23 @@ struct VideoPlayer {
     // }
 
     // TODO: check audio startup
-    if (!videoDecoder.load(videoFileToLoad.c_str())) {
-      if (videoFileToLoad.size() > 0) {
-        std::cerr << "Error loading video file" << std::endl;
-        // quit();
-      }
-    }
+    // if (!videoDecoder.load(videoFileToLoad.c_str())) {
+    //   if (videoFileToLoad.size() > 0) {
+    //     std::cerr << "Error loading video file" << std::endl;
+    //     // quit();
+    //   }
+    // }
 
     // // TODO: this can probably be extracted from video file metadata
     equirectangular = true;
 
-    videoDecoder.start();
+    // videoDecoder.start();
 
     // generate texture
     tex.filter(Texture::LINEAR);
     tex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex.create2D(videoDecoder.width(), videoDecoder.height(), Texture::RGBA8,
-                Texture::RGBA, Texture::UBYTE);
+    // tex.create2D(videoDecoder.width(), videoDecoder.height(), Texture::RGBA8,
+    //             Texture::RGBA, Texture::UBYTE);
 
     // generate mesh
     addTexRect(quad, -1, 1, 2, -2);
@@ -228,6 +285,9 @@ struct VideoPlayer {
       // fps(videoDecoder.fps());
       // mtcReader.TCframes.setCurrent("30");
       state.global_clock = 0;
+      state.videoLoadIndex = -1;
+      state.videoPlaying = false;
+      state.videoRendering = false;
       // renderVideo.set(0.0);
       // showHUD = true;
     }
@@ -246,6 +306,19 @@ struct VideoPlayer {
   void onAnimate(al_sec dt, State &state, bool isPrimary){
     // nav().pos().set(0);
 
+    if(state.videoLoadIndex >= 0 && !videoLoaded[state.videoLoadIndex]){
+      int i = state.videoLoadIndex;
+      switch(state.videoLoadIndex){
+        case 0: loadVideoFile("boardwalk_preview_v3_-_more_extreme_flooding (2160p).mp4",i); break;
+        case 1: loadVideoFile("overfishing_scene_comp_2 (2160p).mp4",i); break;
+        default: break;
+      }
+
+      tex.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
+            Texture::RGBA, Texture::UBYTE);
+
+    }
+
     if (isPrimary) {
       // uint8_t hour{0}, minute{0}, second{0}, frame{0};
 
@@ -257,7 +330,7 @@ struct VideoPlayer {
         //                       second + (frame / mtcReader.fps()) +
         //                       mtcReader.frameOffset;
       // } else 
-      if (playing) {
+      if (state.videoPlaying) {
         state.global_clock += dt;
       }
 
@@ -283,27 +356,30 @@ struct VideoPlayer {
       // }
     }
 
-    if (playing && renderVideo.get() == 1.0) {
-      uint8_t *frame = videoDecoder.getVideoFrame(state.global_clock);
+    if (state.videoPlaying && state.videoRendering) {
+      int i = state.videoLoadIndex;
+      uint8_t *frame = videoDecoder[i].getVideoFrame(state.global_clock);
 
       if (frame) {
         tex.submit(frame);
-        videoDecoder.gotVideoFrame();
+        videoDecoder[i].gotVideoFrame();
       }
     }
   }
 
-  void onDraw(Graphics &g, bool isPrimary){
-    g.clear();
+  void onDraw(Graphics &g, State &state, bool isPrimary){
 
-    if (renderVideo.get() == 1.0) {
+    if (state.videoRendering) {
+      int i = state.videoLoadIndex;
+      g.clear();
+
       if (isPrimary) {
         if (windowed.get() == 1.0) {
           g.pushMatrix();
           g.translate(renderPose.get().pos());
           g.rotate(renderPose.get().quat());
           g.scale(renderScale.get());
-          g.scale((float)videoDecoder.width() / (float)videoDecoder.height(), 1,
+          g.scale((float)videoDecoder[i].width() / (float)videoDecoder[i].height(), 1,
                   1);
           tex.bind();
           g.texture();
@@ -333,7 +409,7 @@ struct VideoPlayer {
           g.scale(renderScale.get());
           g.texture();
           tex.bind();
-          g.scale((float)videoDecoder.width() / (float)videoDecoder.height(), 1,
+          g.scale((float)videoDecoder[i].width() / (float)videoDecoder[i].height(), 1,
                   1);
           g.draw(quad);
           tex.unbind();
@@ -372,11 +448,6 @@ struct VideoPlayer {
   //                    float gain, bool loop);
   // void setAudioDelay(int32_t delaySamples) { audioDelay = delaySamples; }
   // double wallTime{0};
-
-  void setVideoFile(std::string videoFileUrl) {
-    // videoFileToLoad = dataRoot + videoFileUrl;
-    videoFileToLoad = videoFileUrl;
-  };
 
   void setWindowed(Pose pose, Vec3f scale){
     windowed = 1.0;
