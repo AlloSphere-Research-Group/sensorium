@@ -10,10 +10,10 @@ struct AudioPlayer {
 
   SoundFilePlayerTS audioPlayerTS;
   std::vector<float> buffer;
-  ParameterBool playAudio{"Play Audio", "", 0.0};
-  ParameterBool playLoop{"Loop Audio", "", 1.0};
-  ParameterBool pauseAudio{"Pause Audio", "", 0.0};
-  ParameterBool rewindAudio{"Rewind Audio", "", 0.0};
+  ParameterBool playAudio{"Play Audio", "", 0};
+  ParameterBool playLoop{"Loop Audio", "", 1};
+  ParameterBool pauseAudio{"Pause Audio", "", 0};
+  ParameterBool rewindAudio{"Rewind Audio", "", 0};
   Parameter AudioVolume{"Audio Volume", 0.6, 0, 2.5};
 
   void onInit(){
@@ -24,6 +24,7 @@ struct AudioPlayer {
     std::cout << "sampleRate: " << audioPlayerTS.soundFile.sampleRate << std::endl;
     std::cout << "channels: " << audioPlayerTS.soundFile.channels << std::endl;
     std::cout << "frameCount: " << audioPlayerTS.soundFile.frameCount << std::endl;
+    audioPlayerTS.setPause();
   }
   void registerParams(ControlGUI *gui, State &state) {
     *gui << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume;
