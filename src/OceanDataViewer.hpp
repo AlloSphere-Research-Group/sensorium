@@ -519,7 +519,7 @@ struct OceanDataViewer {
         }
       }
       if (s_nav) {
-        nav.moveR(0.003);
+        nav.moveR(0.003*0.25);
       }
       //  audio
       mFilter.freq(30 * (1 + 10 / (radius + 3)) * (year - 2000));
