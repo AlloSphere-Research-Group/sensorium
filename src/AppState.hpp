@@ -14,7 +14,6 @@ struct State {
   bool videoRendering;
   float videoGamma;
   double global_clock;
-  al::Pose videoPose;
 
   // ocean data viewer
   al::Pose global_pose;

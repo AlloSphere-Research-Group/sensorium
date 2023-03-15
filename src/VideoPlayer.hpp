@@ -166,8 +166,12 @@ struct VideoPlayer {
   ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
 
 
-  void registerParams(ControlGUI *gui, State &state) {
+  void registerParams(ControlGUI *gui, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
     *gui << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
+    
+    seq << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
+    
+    // rec << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
 
     playingVideo.registerChangeCallback([&](float value) {
       state.global_clock = 0.0;
