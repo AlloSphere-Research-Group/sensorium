@@ -43,7 +43,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
     oceanDataViewer.onCreate();
-    oceanDataViewer.loadChiData();
+    // oceanDataViewer.loadChiData();
 
     videoPlayer.onCreate(state(), isPrimary());
 
