@@ -34,6 +34,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
     oceanDataViewer.onInit();
     videoPlayer.onInit();
+
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed;
+
   }
 
   void onCreate() override {
