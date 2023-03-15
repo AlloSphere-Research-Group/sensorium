@@ -142,9 +142,10 @@ struct VideoPlayer {
   float exposure;
   bool uniformChanged{false};
 
-  VideoDecoder videoDecoder[6];
+  int localVideoIndex{-1};
+  VideoDecoder videoDecoder[7];
   std::string videoFileToLoad;
-  bool videoLoaded[6]{false,false,false,false,false,false};
+  bool videoLoaded[7]{false,false,false,false,false,false,false};
   std::string dataPath;
 
   std::vector<MappedAudioFile> soundfiles;
@@ -154,11 +155,13 @@ struct VideoPlayer {
   ParameterBool playingVideo{"playingVideo", "", 0.0};
   ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
   Parameter videoGamma{"videoGamma", "", 1.0, 0.0, 2.0};
-  Trigger playBoardwalk{"Play Boardwalk", ""};
-  Trigger playOverfishing{"Play Overfishing", ""};
+  
   Trigger playAerialImages{"Play AerialImages", ""};
-  Trigger playAcidification{"Play Acidification", ""};
   Trigger playSF{"Play SF", ""};
+  Trigger playBoardwalk{"Play Boardwalk", ""};
+  Trigger playCoral{"Play Coral", ""};
+  Trigger playOverfishing{"Play Overfishing", ""};
+  Trigger playAcidification{"Play Acidification", ""};
   Trigger playBoat{"Play Boat", ""};
 
   ParameterBool windowed{"windowed", "", 0.0};
@@ -168,7 +171,9 @@ struct VideoPlayer {
 
   void registerParams(ControlGUI *gui, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
     *gui << renderVideoInSim << playingVideo << videoGamma;
-    *gui << playAcidification << playAerialImages << playBoardwalk << playOverfishing << playBoat << playSF;
+    *gui << playAerialImages << playSF;
+    *gui << playBoardwalk << playCoral;
+    *gui << playOverfishing << playAcidification << playBoat;
     *gui << renderPose << renderScale;
     
     // seq << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
@@ -182,21 +187,21 @@ struct VideoPlayer {
       state.videoLoadIndex = -1;
     });
 
-    playAcidification.registerChangeCallback([&](float value) {
+
+    playAerialImages.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 0;
     });
-    playAerialImages.registerChangeCallback([&](float value) {
+    playSF.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 1;
     });
-
     playBoardwalk.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
@@ -204,26 +209,33 @@ struct VideoPlayer {
       state.videoRendering = true;
       state.videoLoadIndex = 2;
     });
-    playOverfishing.registerChangeCallback([&](float value) {
+    playCoral.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 3;
     });
-    playBoat.registerChangeCallback([&](float value) {
+    playOverfishing.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 4;
     });
-    playSF.registerChangeCallback([&](float value) {
+    playAcidification.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 5;
+    });
+    playBoat.registerChangeCallback([&](float value) {
+      playingVideo.setNoCalls(1.0);
+      state.global_clock = 0.0;
+      state.videoPlaying = true;
+      state.videoRendering = true;
+      state.videoLoadIndex = 6;
     });
 
   }
@@ -345,22 +357,28 @@ struct VideoPlayer {
   }
 
   void onAnimate(al_sec dt, State &state, bool isPrimary){
+    int i = state.videoLoadIndex;
 
-    if(state.videoLoadIndex >= 0 && !videoLoaded[state.videoLoadIndex]){
-      int i = state.videoLoadIndex;
-      switch(state.videoLoadIndex){
-        case 0: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
-        case 1: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
+    if(i >= 0 && !videoLoaded[i]){
+      switch(i){
+        case 0: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
+        case 1: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
         case 2: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
-        case 3: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
-        case 4: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
-        case 5: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
+        case 3: loadVideoFile("coralsequence_mono_04.mp4 (1080p).mp4",i); break;
+        case 4: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
+        case 5: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
+        case 6: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
         default: break;
       }
 
       tex.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
             Texture::RGBA, Texture::UBYTE);
 
+    } else if(localVideoIndex != state.videoLoadIndex){
+      tex.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
+            Texture::RGBA, Texture::UBYTE);
+
+      localVideoIndex = state.videoLoadIndex;
     }
 
     if (isPrimary) {
@@ -402,7 +420,6 @@ struct VideoPlayer {
     }
 
     if (state.videoPlaying && state.videoRendering) {
-      int i = state.videoLoadIndex;
       uint8_t *frame = videoDecoder[i].getVideoFrame(state.global_clock);
 
       if (frame) {
@@ -415,7 +432,8 @@ struct VideoPlayer {
   void onDraw(Graphics &g, Nav& nav, State &state, bool isPrimary){
 
     if (state.videoRendering) {
-      nav.setIdentity();
+      nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
+      // nav.setIdentity();
       // nav.pos().set(0);
 
       int i = state.videoLoadIndex;
