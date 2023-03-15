@@ -25,6 +25,7 @@ struct AudioPlayer {
     std::cout << "channels: " << audioPlayerTS.soundFile.channels << std::endl;
     std::cout << "frameCount: " << audioPlayerTS.soundFile.frameCount << std::endl;
     audioPlayerTS.setPause();
+    audioPlayerTS.setLoop();
   }
   void registerParams(ControlGUI *gui, State &state) {
     *gui << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume;
