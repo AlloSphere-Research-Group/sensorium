@@ -52,7 +52,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
     navControl().vscale(0.125*0.1*0.5);
-    navControl().tscale(2*0.5);
+    navControl().tscale(2*0.1*0.5);
 
     oceanDataViewer.onCreate();
     oceanDataViewer.loadChiData();
