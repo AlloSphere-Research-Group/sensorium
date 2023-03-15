@@ -12,6 +12,7 @@ struct State {
   int videoLoadIndex;
   bool videoPlaying;
   bool videoRendering;
+  float videoGamma;
   double global_clock;
 
   // ocean data viewer

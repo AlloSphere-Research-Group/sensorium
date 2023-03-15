@@ -519,7 +519,7 @@ struct OceanDataViewer {
         }
       }
       if (s_nav) {
-        nav.moveR(0.003);
+        nav.moveR(0.003*0.25);
       }
       //  audio
       mFilter.freq(30 * (1 + 10 / (radius + 3)) * (year - 2000));
@@ -706,7 +706,7 @@ struct OceanDataViewer {
   }
 
 
-  void registerParams(ControlGUI *gui, Nav &nav, State &state) {
+  void registerParams(ControlGUI *gui, PresetSequencer &seq, SequenceRecorder &rec, Nav &nav, State &state) {
     std::string displayText =
         "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
     // *gui << lat << lon << radius << lux << year << gain;
@@ -719,6 +719,19 @@ struct OceanDataViewer {
     // *gui << s_ci << s_oc << s_np;
 
     // *gui << lat << lon << radius << lux << year << trans << gain;
+
+    seq << year;
+    seq << s_years << s_nav;
+    seq << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+    seq << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
+
+    // rec << year;
+    // rec << s_years << s_nav;
+    // rec << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+    // rec << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    // rec << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
+
 
     lat.registerChangeCallback([&](float value) {
       nav.pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *

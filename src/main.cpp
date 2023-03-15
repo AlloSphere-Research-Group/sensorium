@@ -22,6 +22,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   AudioPlayer audioPlayer;
 
   ControlGUI *gui;
+  PresetSequencer sequencer;
+  SequenceRecorder recorder;
+
 
   void onInit() override {
     cuttleboneDomain = CuttleboneDomain<State>::enableCuttlebone(this);
@@ -37,6 +40,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     oceanDataViewer.onInit();
     videoPlayer.onInit();
     audioPlayer.onInit();
+    // synchronizes attached params accross renderers
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed;
+
   }
 
   void onCreate() override {
@@ -44,6 +50,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     lens().fovy(45).eyeSep(0);
     nav().pos(0, 0, -5);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
+
+    navControl().vscale(0.125*0.1*0.5);
+    navControl().tscale(2*0.5);
 
     oceanDataViewer.onCreate();
     oceanDataViewer.loadChiData();
@@ -53,12 +62,16 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
+      sequencer.setDirectory("presets");
+      recorder.setDirectory("presets");
+
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      oceanDataViewer.registerParams(gui, nav(), state());
-      videoPlayer.registerParams(gui, state());
+      oceanDataViewer.registerParams(gui, sequencer, recorder, nav(), state());
+      videoPlayer.registerParams(gui, sequencer, recorder, state());
       audioPlayer.registerParams(gui, state());
+      // *gui << sequencer << recorder;
     }
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
