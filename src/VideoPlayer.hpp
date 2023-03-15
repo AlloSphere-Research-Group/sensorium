@@ -415,7 +415,8 @@ struct VideoPlayer {
   void onDraw(Graphics &g, Nav& nav, State &state, bool isPrimary){
 
     if (state.videoRendering) {
-      nav.pos().set(0);
+      nav.setIdentity();
+      // nav.pos().set(0);
 
       int i = state.videoLoadIndex;
       exposure = state.videoGamma;
