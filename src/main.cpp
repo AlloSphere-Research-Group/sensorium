@@ -9,6 +9,7 @@
 #include "AppState.hpp"
 #include "OceanDataViewer.hpp"
 #include "VideoPlayer.hpp"
+#include "AudioPlayer.hpp"
 
 using namespace al;
 
@@ -18,6 +19,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   OceanDataViewer oceanDataViewer;
   VideoPlayer videoPlayer;
+  AudioPlayer audioPlayer;
 
   ControlGUI *gui;
   PresetSequencer sequencer;
@@ -37,7 +39,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
     oceanDataViewer.onInit();
     videoPlayer.onInit();
-
+    audioPlayer.onInit();
     // synchronizes attached params accross renderers
     parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed;
 
@@ -68,7 +70,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
       oceanDataViewer.registerParams(gui, sequencer, recorder, nav(), state());
       videoPlayer.registerParams(gui, sequencer, recorder, state());
-
+      audioPlayer.registerParams(gui, state());
       // *gui << sequencer << recorder;
     }
     // enable if parameter needs to be shared
@@ -80,7 +82,11 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onAnimate(dt, state(), isPrimary());
   }
 
-  void onSound(AudioIOData &io) override { oceanDataViewer.onSound(io); }
+  void onSound(AudioIOData &io) override { 
+    // oceanDataViewer.onSound(io); 
+    audioPlayer.onSound(io);
+  }
+
 
   void onDraw(Graphics &g) override {
     if(!state().videoRendering)
