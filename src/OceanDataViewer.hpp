@@ -191,8 +191,12 @@ struct OceanDataViewer {
   ParameterBool s_nav{"Explore Globe", "", 0.0};
   ParameterBool s_years{"2003 - 2013", "", 0.0};
 
-  bool faceTo = true;
-  bool animateCam = false;
+  ParameterBool animateCam{"animateCam", "", 0.0};
+  ParameterBool faceTo{"Face Center", "", 1.0};
+
+
+  // bool faceTo = true;
+  // bool animateCam = false;
   Pose navTarget;
   float anim_speed = 0.0;
   float anim_target_speed = 0.004;
@@ -423,10 +427,10 @@ struct OceanDataViewer {
       Vec3f point_you_want_to_see =
           Vec3f(0, 0, 0); // examplary point that you want to see
       if (faceTo)
-        nav.faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.7);
+        nav.faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.1);
 
 
-      if (animateCam) {
+      if (animateCam.get()) {
         // easing on both in and out
         // EaseIn(value, target, speed)
         // if (animateCam == 1) {
@@ -711,7 +715,8 @@ struct OceanDataViewer {
         "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
     // *gui << lat << lon << radius << lux << year << gain;
     *gui << year;
-    *gui << s_years << s_nav;
+    *gui << s_years;
+    *gui << s_nav << faceTo << animateCam;
     *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
     *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
     *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;

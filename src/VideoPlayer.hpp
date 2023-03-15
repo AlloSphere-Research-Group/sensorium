@@ -167,9 +167,11 @@ struct VideoPlayer {
 
 
   void registerParams(ControlGUI *gui, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
-    *gui << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
+    *gui << renderVideoInSim << playingVideo << videoGamma;
+    *gui << playAcidification << playAerialImages << playBoardwalk << playOverfishing << playBoat << playSF;
+    *gui << renderPose << renderScale;
     
-    seq << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
+    // seq << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
     
     // rec << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
 
@@ -180,48 +182,50 @@ struct VideoPlayer {
       state.videoLoadIndex = -1;
     });
 
-    playBoardwalk.registerChangeCallback([&](float value) {
+    playAcidification.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 0;
     });
-    playOverfishing.registerChangeCallback([&](float value) {
+    playAerialImages.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 1;
     });
-    playAerialImages.registerChangeCallback([&](float value) {
+
+    playBoardwalk.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 2;
     });
-    playAcidification.registerChangeCallback([&](float value) {
+    playOverfishing.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 3;
     });
-    playSF.registerChangeCallback([&](float value) {
+    playBoat.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 4;
     });
-    playBoat.registerChangeCallback([&](float value) {
+    playSF.registerChangeCallback([&](float value) {
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 5;
     });
+
   }
 
 
@@ -341,17 +345,16 @@ struct VideoPlayer {
   }
 
   void onAnimate(al_sec dt, State &state, bool isPrimary){
-    // nav().pos().set(0);
 
     if(state.videoLoadIndex >= 0 && !videoLoaded[state.videoLoadIndex]){
       int i = state.videoLoadIndex;
       switch(state.videoLoadIndex){
-        case 0: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
-        case 1: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
-        case 2: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
-        case 3: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
-        case 4: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
-        case 5: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
+        case 0: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
+        case 1: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
+        case 2: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
+        case 3: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
+        case 4: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
+        case 5: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
         default: break;
       }
 
@@ -409,9 +412,11 @@ struct VideoPlayer {
     }
   }
 
-  void onDraw(Graphics &g, State &state, bool isPrimary){
+  void onDraw(Graphics &g, Nav& nav, State &state, bool isPrimary){
 
     if (state.videoRendering) {
+      nav.pos().set(0);
+
       int i = state.videoLoadIndex;
       exposure = state.videoGamma;
       g.clear();

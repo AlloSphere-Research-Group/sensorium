@@ -86,7 +86,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     if(!state().videoRendering)
       oceanDataViewer.onDraw(g, nav(), state());
     
-    videoPlayer.onDraw(g, state(), isPrimary());
+    videoPlayer.onDraw(g, nav(), state(), isPrimary());
   }
 
   bool onKeyDown(const Keyboard &k) override {
