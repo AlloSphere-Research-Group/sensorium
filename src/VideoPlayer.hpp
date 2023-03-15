@@ -151,7 +151,8 @@ struct VideoPlayer {
   uint64_t samplesPlayed{0};
   int32_t audioDelay{0};
 
-  ParameterBool renderVideo{"renderVideo", "", 0.0};
+  ParameterBool playingVideo{"playingVideo", "", 0.0};
+  ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
   Parameter videoGamma{"videoGamma", "", 1.0, 0.0, 2.0};
   Trigger playBoardwalk{"Play Boardwalk", ""};
   Trigger playOverfishing{"Play Overfishing", ""};
@@ -166,9 +167,9 @@ struct VideoPlayer {
 
 
   void registerParams(ControlGUI *gui, State &state) {
-    *gui << renderVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat;
+    *gui << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
 
-    renderVideo.registerChangeCallback([&](float value) {
+    playingVideo.registerChangeCallback([&](float value) {
       state.global_clock = 0.0;
       state.videoPlaying = false;
       state.videoRendering = false;
@@ -176,42 +177,42 @@ struct VideoPlayer {
     });
 
     playBoardwalk.registerChangeCallback([&](float value) {
-      renderVideo.setNoCalls(1.0);
+      playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 0;
     });
     playOverfishing.registerChangeCallback([&](float value) {
-      renderVideo.setNoCalls(1.0);
+      playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 1;
     });
     playAerialImages.registerChangeCallback([&](float value) {
-      renderVideo.setNoCalls(1.0);
+      playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 2;
     });
     playAcidification.registerChangeCallback([&](float value) {
-      renderVideo.setNoCalls(1.0);
+      playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 3;
     });
     playSF.registerChangeCallback([&](float value) {
-      renderVideo.setNoCalls(1.0);
+      playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
       state.videoLoadIndex = 4;
     });
     playBoat.registerChangeCallback([&](float value) {
-      renderVideo.setNoCalls(1.0);
+      playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
@@ -320,7 +321,7 @@ struct VideoPlayer {
       state.videoLoadIndex = -1;
       state.videoPlaying = false;
       state.videoRendering = false;
-      // renderVideo.set(0.0);
+      // playingVideo.set(0.0);
       // showHUD = true;
     }
     // if (!isPrimary() && omniRendering) {
@@ -376,7 +377,7 @@ struct VideoPlayer {
 
       //   ImGui::Begin("MIDI Time Code");
 
-        // ParameterGUI::draw(&renderVideo);
+        // ParameterGUI::draw(&playingVideo);
       //   ParameterGUI::draw(&syncToMTC);
       //   ParameterGUI::drawMIDIIn(&mtcReader.midiIn);
       //   ParameterGUI::draw(&mtcReader.TCframes);
@@ -412,31 +413,33 @@ struct VideoPlayer {
       g.clear();
 
       if (isPrimary) {
-        if (windowed.get() == 1.0) {
-          g.pushMatrix();
-          g.translate(renderPose.get().pos());
-          g.rotate(renderPose.get().quat());
-          g.scale(renderScale.get());
-          g.scale((float)videoDecoder[i].width() / (float)videoDecoder[i].height(), 1,
-                  1);
-          tex.bind();
-          g.texture();
-          g.draw(quad);
-          tex.unbind();
+        if(renderVideoInSim.get()){
+          if (windowed.get() == 1.0) {
+            g.pushMatrix();
+            g.translate(renderPose.get().pos());
+            g.rotate(renderPose.get().quat());
+            g.scale(renderScale.get());
+            g.scale((float)videoDecoder[i].width() / (float)videoDecoder[i].height(), 1,
+                    1);
+            tex.bind();
+            g.texture();
+            g.draw(quad);
+            tex.unbind();
 
-          g.popMatrix();
-        } else {
-          g.pushMatrix();
-          g.translate(renderPose.get().pos());
-          g.rotate(renderPose.get().quat());
-          g.scale(renderScale.get());
-          // g.scale((float)videoDecoder.width() / (float)videoDecoder.height(), 1, 1);
-          tex.bind();
-          g.texture();
-          g.draw(sphere);
-          tex.unbind();
+            g.popMatrix();
+          } else {
+            g.pushMatrix();
+            g.translate(renderPose.get().pos());
+            g.rotate(renderPose.get().quat());
+            g.scale(renderScale.get());
+            // g.scale((float)videoDecoder.width() / (float)videoDecoder.height(), 1, 1);
+            tex.bind();
+            g.texture();
+            g.draw(sphere);
+            tex.unbind();
 
-          g.popMatrix();
+            g.popMatrix();
+          }
         }
       } else {
         g.pushMatrix();
