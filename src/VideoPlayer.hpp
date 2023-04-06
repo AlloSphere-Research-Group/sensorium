@@ -432,8 +432,8 @@ struct VideoPlayer {
   void onDraw(Graphics &g, Nav& nav, State &state, bool isPrimary){
 
     if (state.videoRendering) {
-      nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
-      // nav.setIdentity();
+      // nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
+      nav.setIdentity();
       // nav.pos().set(0);
 
       int i = state.videoLoadIndex;
@@ -495,7 +495,7 @@ struct VideoPlayer {
 
           tex.bind();
           // TODO there is likely a better way to set the pose.
-          //      g.translate(renderPose.get().pos());
+          g.translate(renderPose.get().pos());
           g.rotate(renderPose.get().quat());
           g.scale(renderScale.get());
           g.draw(sphere);
