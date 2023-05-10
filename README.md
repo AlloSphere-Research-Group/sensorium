@@ -11,6 +11,7 @@ currently requires:
  * bash shell
  * git
  * cmake version 3.0 or higher
+ * sudo apt-get install libavformat-dev libswscale-dev
 
 ## How to compile / run
 The src/ folder contains the initial main.cpp starter code.
