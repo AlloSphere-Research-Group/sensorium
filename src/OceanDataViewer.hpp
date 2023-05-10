@@ -605,6 +605,8 @@ struct OceanDataViewer {
     g.popMatrix();
 
     // Draw data
+    g.lighting(false);
+
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
         g.meshColor();

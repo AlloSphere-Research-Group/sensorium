@@ -364,7 +364,7 @@ struct VideoPlayer {
         case 0: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
         case 1: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
         case 2: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
-        case 3: loadVideoFile("coralsequence_mono_04.mp4 (1080p).mp4",i); break;
+        case 3: loadVideoFile("Sensorium_Mono_Final_Comped_02_1080p.mov",i); break;
         case 4: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
         case 5: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
         case 6: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
