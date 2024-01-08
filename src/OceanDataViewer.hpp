@@ -722,7 +722,7 @@ struct OceanDataViewer {
   }
 
 
-  void registerParams(ControlGUI *gui, PresetSequencer &seq, SequenceRecorder &rec, Nav &nav, State &state) {
+  void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, SequenceRecorder &rec, Nav &nav, State &state) {
     std::string displayText =
         "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
     // *gui << lat << lon << radius << lux << year << gain;
@@ -737,11 +737,11 @@ struct OceanDataViewer {
 
     // *gui << lat << lon << radius << lux << year << trans << gain;
 
-    seq << year;
-    seq << s_years << s_nav;
-    seq << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
-    seq << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
-    seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
+    presets << year;
+    presets << s_years << s_nav;
+    presets << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+    presets << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
     // rec << year;
     // rec << s_years << s_nav;

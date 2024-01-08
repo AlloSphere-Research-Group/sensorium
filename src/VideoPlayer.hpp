@@ -147,9 +147,6 @@ struct VideoPlayer {
   VideoDecoder *videoDecoder2{NULL};
   bool loadVideo1;
   bool loadVideo2;
-  // VideoDecoder videoDecoder[7];
-  // std::string videoFileToLoad;
-  // bool videoLoaded[7]{false,false,false,false,false,false,false};
   std::string dataPath;
 
   std::vector<MappedAudioFile> soundfiles;
@@ -163,27 +160,30 @@ struct VideoPlayer {
   ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
   Parameter videoGamma{"videoGamma", "", 1.0, 0.0, 2.0};
   
-  Trigger playAerialImages{"Play AerialImages", ""};
-  Trigger playSF{"Play SF", ""};
-  Trigger playBoardwalk{"Play Boardwalk", ""};
-  Trigger playCoral{"Play Coral", ""};
-  Trigger playOverfishing{"Play Overfishing", ""};
-  Trigger playAcidification{"Play Acidification", ""};
-  Trigger playBoat{"Play Boat", ""};
+  Trigger playWater{"Play_Water", ""};
+  Trigger playAerialImages{"Play_AerialImages", ""};
+  Trigger playSF{"Play_SF", ""};
+  Trigger playBoardwalk{"Play_Boardwalk", ""};
+  Trigger playCoral{"Play_Coral", ""};
+  Trigger playOverfishing{"Play_Overfishing", ""};
+  Trigger playAcidification{"Play_Acidification", ""};
+  Trigger playBoat{"Play_Boat", ""};
 
   ParameterBool windowed{"windowed", "", 0.0};
   ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, -4))};
   ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
 
 
-  void registerParams(ControlGUI *gui, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
+  void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
     *gui << renderVideoInSim << playingVideo << videoGamma;
-    *gui << playAerialImages << playSF;
+    *gui << playWater << playAerialImages << playSF;
     *gui << playBoardwalk << playCoral;
     *gui << playOverfishing << playAcidification << playBoat;
     *gui << renderPose << renderScale;
     
-    // seq << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
+    presets << renderVideoInSim << playingVideo << videoGamma;
+    seq << video1;
+    seq << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << playWater; //<< renderPose << renderScale;
     
     // rec << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
 
@@ -191,7 +191,6 @@ struct VideoPlayer {
       state.global_clock = 0.0;
       state.videoPlaying = false;
       state.videoRendering = false;
-      state.videoLoadIndex = -1;
     });
 
     video1.registerChangeCallback([&](std::string value) {
@@ -210,7 +209,6 @@ struct VideoPlayer {
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 0;
     });
     playSF.registerChangeCallback([&](float value) {
       video1.set("sfmegamodel_v8 (1080p).mp4");
@@ -218,42 +216,48 @@ struct VideoPlayer {
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 1;
     });
     playBoardwalk.registerChangeCallback([&](float value) {
+      video1.set("boardwalk_preview_v8 (1080p).mp4");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 2;
     });
     playCoral.registerChangeCallback([&](float value) {
+      video1.set("Sensorium_Mono_Final_Comped_02.mov");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 3;
     });
     playOverfishing.registerChangeCallback([&](float value) {
+      video1.set("overfishing_scene_comp_2 (1080p).mp4");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 4;
     });
     playAcidification.registerChangeCallback([&](float value) {
+      video1.set("sensorium_preview (1080p).mp4");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 5;
     });
     playBoat.registerChangeCallback([&](float value) {
+      video1.set("sensorium_boat_scene_12 (1080p).mp4");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
       state.videoRendering = true;
-      state.videoLoadIndex = 6;
+    });
+    playWater.registerChangeCallback([&](float value) {
+      video1.set("out3r2x.mp4");
+      playingVideo.setNoCalls(1.0);
+      state.global_clock = 0.0;
+      state.videoPlaying = true;
+      state.videoRendering = true;
     });
 
   }
@@ -262,7 +266,9 @@ struct VideoPlayer {
   void loadVideoFile1(std::string videoFileUrl) {
     std::string path = dataPath + videoFileUrl;
 
-    if(videoDecoder1 != NULL) videoDecoder1->cleanup();
+    if(videoDecoder1 != NULL){
+      videoDecoder1->stop();
+    }
     videoDecoder1 = new VideoDecoder();
     videoDecoder1->enableAudio(false);
 

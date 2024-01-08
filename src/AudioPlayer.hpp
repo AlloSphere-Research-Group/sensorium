@@ -18,7 +18,8 @@ struct AudioPlayer {
 
   void onInit(){
     // const char name[] = "data/jkm-wave-project.wav";
-    const char name[] = "data/new-sensorium-project.wav";
+    // const char name[] = "data/new-sensorium-project.wav";
+    const char name[] = "data/Normalized-Complete-Sensorium-project.wav";
     if (!audioPlayerTS.open(name)) {
       std::cerr << "File not found: " << name << std::endl;
     }
@@ -28,8 +29,10 @@ struct AudioPlayer {
     audioPlayerTS.setPause();
     audioPlayerTS.setLoop();
   }
-  void registerParams(ControlGUI *gui, State &state) {
+  void registerParams(ControlGUI *gui, PresetHandler &presets, State &state) {
     *gui << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume;
+    
+    presets << AudioVolume;
 
     playAudio.registerChangeCallback([&](float value) {
       audioPlayerTS.setPlay();

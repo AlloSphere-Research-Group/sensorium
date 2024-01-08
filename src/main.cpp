@@ -22,6 +22,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   AudioPlayer audioPlayer;
 
   ControlGUI *gui;
+  PresetHandler presets{"data/presets", true};
   PresetSequencer sequencer;
   SequenceRecorder recorder;
 
@@ -61,22 +62,22 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     });
     thread.detach(); 
 
-    // oceanDataViewer.loadChiData();
-
     videoPlayer.onCreate(state(), isPrimary());
 
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
-      sequencer.setDirectory("presets");
-      recorder.setDirectory("presets");
+      sequencer.setDirectory("data/presets");
+      recorder.setDirectory("data/presets");
 
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      oceanDataViewer.registerParams(gui, sequencer, recorder, nav(), state());
-      videoPlayer.registerParams(gui, sequencer, recorder, state());
-      audioPlayer.registerParams(gui, state());
+      oceanDataViewer.registerParams(gui, presets, sequencer, recorder, nav(), state());
+      videoPlayer.registerParams(gui, presets, sequencer, recorder, state());
+      audioPlayer.registerParams(gui, presets, state());
+
+      sequencer << presets;
       // *gui << sequencer << recorder;
     }
     // enable if parameter needs to be shared
@@ -102,47 +103,67 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   }
 
   bool onKeyDown(const Keyboard &k) override {
-    switch (k.key()) {
-    case '1':
-      oceanDataViewer.setGeoTarget(53.54123998879464, 9.950943100405375, 3.2, 4.0);
-      return true;
-    case '2':
-      oceanDataViewer.setGeoTarget(54.40820774011447, 12.593582740321027, 3.2, 4.0);
-      return true;
-    case '3':
-      oceanDataViewer.setGeoTarget(53.91580380807132, 9.531183185073399, 3.2, 4.0);
-      return true;
-    case '4':
-      oceanDataViewer.setGeoTarget(53.78527983917765, 9.409205631903566, 3.2, 4.0);
-      return true;
-    case '5':
-      oceanDataViewer.setGeoTarget(0, -80, 30, 6.0);
-      return true;
-    case '0':
-      oceanDataViewer.setGeoTarget(0, 138, 0.01, 4.0);
-      return true;
-    case 'r':
-      oceanDataViewer.setGeoTarget(0, 0, 5, 4.0);
-      return true;
-    case '=':
-      oceanDataViewer.faceTo = !oceanDataViewer.faceTo;
-      return true;
-    case '9':
-      state().molph = !state().molph;
-      oceanDataViewer.year = 2003;
-      return true;
-    case '8':
-      for (int i = 0; i < stressors; i++)
-        state().swtch[i] = false;
-      return true;
-
-    case ' ':
-      oceanDataViewer.s_years = 1.0;
-      return true;
-    default:
-      return false;
+    std::string presetName = std::to_string(k.keyAsNumber());
+    if (k.alt()) {
+      if (k.isNumber()) { // Use alt + any number key to store preset
+        presets.storePreset(k.keyAsNumber(), presetName);
+        std::cout << "Storing preset:" << presetName << std::endl;
+      }
+    } else {
+      if (k.isNumber()) { // Recall preset using the number keys
+        presets.recallPreset(k.keyAsNumber());
+        std::cout << "Recalling preset:" << presetName << std::endl;
+      }
+      if (k.key() == ' ') {
+        // Notice that you don't need to add the extension ".sequence" to the name
+        sequencer.playSequence("test");
+      }
     }
+    return true;
   }
+
+  // bool onKeyDown(const Keyboard &k) override {
+  //   switch (k.key()) {
+  //   case '1':
+  //     oceanDataViewer.setGeoTarget(53.54123998879464, 9.950943100405375, 3.2, 4.0);
+  //     return true;
+  //   case '2':
+  //     oceanDataViewer.setGeoTarget(54.40820774011447, 12.593582740321027, 3.2, 4.0);
+  //     return true;
+  //   case '3':
+  //     oceanDataViewer.setGeoTarget(53.91580380807132, 9.531183185073399, 3.2, 4.0);
+  //     return true;
+  //   case '4':
+  //     oceanDataViewer.setGeoTarget(53.78527983917765, 9.409205631903566, 3.2, 4.0);
+  //     return true;
+  //   case '5':
+  //     oceanDataViewer.setGeoTarget(0, -80, 30, 6.0);
+  //     return true;
+  //   case '0':
+  //     oceanDataViewer.setGeoTarget(0, 138, 0.01, 4.0);
+  //     return true;
+  //   case 'r':
+  //     oceanDataViewer.setGeoTarget(0, 0, 5, 4.0);
+  //     return true;
+  //   case '=':
+  //     oceanDataViewer.faceTo = !oceanDataViewer.faceTo;
+  //     return true;
+  //   case '9':
+  //     state().molph = !state().molph;
+  //     oceanDataViewer.year = 2003;
+  //     return true;
+  //   case '8':
+  //     for (int i = 0; i < stressors; i++)
+  //       state().swtch[i] = false;
+  //     return true;
+
+  //   case ' ':
+  //     oceanDataViewer.s_years = 1.0;
+  //     return true;
+  //   default:
+  //     return false;
+  //   }
+  // }
 
   // void onMessage(osc::Message& m) override {
   // }
