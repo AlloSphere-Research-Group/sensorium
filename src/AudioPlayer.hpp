@@ -17,7 +17,8 @@ struct AudioPlayer {
   Parameter AudioVolume{"Audio Volume", 0.6, 0, 2.5};
 
   void onInit(){
-    const char name[] = "data/jkm-wave-project.wav";
+    // const char name[] = "data/jkm-wave-project.wav";
+    const char name[] = "data/new-sensorium-project.wav";
     if (!audioPlayerTS.open(name)) {
       std::cerr << "File not found: " << name << std::endl;
     }

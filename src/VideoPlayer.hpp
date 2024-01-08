@@ -134,7 +134,7 @@ struct VideoPlayer {
     bool mute{false};
   };
 
-  Texture tex;
+  Texture tex1, tex2;
   VAOMesh quad, sphere;
   bool equirectangular{true};
 
@@ -142,15 +142,22 @@ struct VideoPlayer {
   float exposure;
   bool uniformChanged{false};
 
-  int localVideoIndex{-1};
-  VideoDecoder videoDecoder[7];
-  std::string videoFileToLoad;
-  bool videoLoaded[7]{false,false,false,false,false,false,false};
+  // int localVideoIndex{-1};
+  VideoDecoder *videoDecoder1{NULL};
+  VideoDecoder *videoDecoder2{NULL};
+  bool loadVideo1;
+  bool loadVideo2;
+  // VideoDecoder videoDecoder[7];
+  // std::string videoFileToLoad;
+  // bool videoLoaded[7]{false,false,false,false,false,false,false};
   std::string dataPath;
 
   std::vector<MappedAudioFile> soundfiles;
   uint64_t samplesPlayed{0};
   int32_t audioDelay{0};
+
+  ParameterString video1{"video1", ""};
+  ParameterString video2{"video2", ""};
 
   ParameterBool playingVideo{"playingVideo", "", 0.0};
   ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
@@ -187,8 +194,18 @@ struct VideoPlayer {
       state.videoLoadIndex = -1;
     });
 
+    video1.registerChangeCallback([&](std::string value) {
+      std::cout << "loading file to video1: " << value << std::endl;
+      loadVideo1 = true;
+    });
+    video2.registerChangeCallback([&](std::string value) {
+      std::cout << "loading file to video2: " << value << std::endl;
+      loadVideo2 = true;
+    });
+
 
     playAerialImages.registerChangeCallback([&](float value) {
+      video1.set("aerialimages_+_sf (1080p).mp4");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
@@ -196,6 +213,7 @@ struct VideoPlayer {
       state.videoLoadIndex = 0;
     });
     playSF.registerChangeCallback([&](float value) {
+      video1.set("sfmegamodel_v8 (1080p).mp4");
       playingVideo.setNoCalls(1.0);
       state.global_clock = 0.0;
       state.videoPlaying = true;
@@ -241,17 +259,22 @@ struct VideoPlayer {
   }
 
 
-  void loadVideoFile(std::string videoFileUrl, int index) {
-    videoFileToLoad = dataPath + videoFileUrl;
+  void loadVideoFile1(std::string videoFileUrl) {
+    std::string path = dataPath + videoFileUrl;
 
-    if (!videoDecoder[index].load(videoFileToLoad.c_str())) {
-      if (videoFileToLoad.size() > 0) {
-        std::cerr << "Error loading video file" << std::endl;
-      }
+    if(videoDecoder1 != NULL) videoDecoder1->cleanup();
+    videoDecoder1 = new VideoDecoder();
+    videoDecoder1->enableAudio(false);
+
+    if (!videoDecoder1->load(path.c_str())) {
+      std::cerr << "Error loading video file: " << path << std::endl;
     }
 
-    videoDecoder[index].start();
-    videoLoaded[index] = true;
+    videoDecoder1->start();
+    loadVideo1 = false;
+    
+    tex1.create2D(videoDecoder1->width(), videoDecoder1->height(), Texture::RGBA8,
+            Texture::RGBA, Texture::UBYTE);
   };
 
   void onInit(){
@@ -297,8 +320,8 @@ struct VideoPlayer {
 
     // TODO: temporarily disabled audio
     // if (!isPrimary()) {
-    for(int i=0; i < 6; i++)
-      videoDecoder[i].enableAudio(false);
+    // for(int i=0; i < 6; i++)
+      // videoDecoder[i].enableAudio(false);
     // }
 
     // if (isPrimary()) {
@@ -319,9 +342,9 @@ struct VideoPlayer {
     // videoDecoder.start();
 
     // generate texture
-    tex.filter(Texture::LINEAR);
-    tex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    // tex.create2D(videoDecoder.width(), videoDecoder.height(), Texture::RGBA8,
+    tex1.filter(Texture::LINEAR);
+    tex1.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    // tex1.create2D(videoDecoder.width(), videoDecoder.height(), Texture::RGBA8,
     //             Texture::RGBA, Texture::UBYTE);
 
     // generate mesh
@@ -357,29 +380,30 @@ struct VideoPlayer {
   }
 
   void onAnimate(al_sec dt, State &state, bool isPrimary){
-    int i = state.videoLoadIndex;
+    // int i = state.videoLoadIndex;
 
-    if(i >= 0 && !videoLoaded[i]){
-      switch(i){
-        case 0: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
-        case 1: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
-        case 2: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
-        case 3: loadVideoFile("Sensorium_Mono_Final_Comped_02_1080p.mov",i); break;
-        case 4: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
-        case 5: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
-        case 6: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
-        default: break;
-      }
+    // if(i >= 0 && !videoLoaded[i]){
+    //   switch(i){
+    //     case 0: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
+    //     case 1: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
+    //     case 2: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
+    //     case 3: loadVideoFile("Sensorium_Mono_Final_Comped_02_1080p.mov",i); break;
+    //     case 4: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
+    //     case 5: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
+    //     case 6: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
+    //     default: break;
+    //   }
 
-      tex.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
-            Texture::RGBA, Texture::UBYTE);
+    //   tex1.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
+    //         Texture::RGBA, Texture::UBYTE);
 
-    } else if(localVideoIndex != state.videoLoadIndex){
-      tex.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
-            Texture::RGBA, Texture::UBYTE);
+    // } else if(localVideoIndex != state.videoLoadIndex){
+    //   tex1.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
+    //         Texture::RGBA, Texture::UBYTE);
 
-      localVideoIndex = state.videoLoadIndex;
-    }
+    //   localVideoIndex = state.videoLoadIndex;
+    // }
+    if(loadVideo1) loadVideoFile1(video1);
 
     if (isPrimary) {
       // uint8_t hour{0}, minute{0}, second{0}, frame{0};
@@ -420,11 +444,11 @@ struct VideoPlayer {
     }
 
     if (state.videoPlaying && state.videoRendering) {
-      uint8_t *frame = videoDecoder[i].getVideoFrame(state.global_clock);
+      uint8_t *frame = videoDecoder1->getVideoFrame(state.global_clock);
 
       if (frame) {
-        tex.submit(frame);
-        videoDecoder[i].gotVideoFrame();
+        tex1.submit(frame);
+        videoDecoder1->gotVideoFrame();
       }
     }
   }
@@ -447,12 +471,12 @@ struct VideoPlayer {
             g.translate(renderPose.get().pos());
             g.rotate(renderPose.get().quat());
             g.scale(renderScale.get());
-            g.scale((float)videoDecoder[i].width() / (float)videoDecoder[i].height(), 1,
+            g.scale((float)videoDecoder1->width() / (float)videoDecoder1->height(), 1,
                     1);
-            tex.bind();
+            tex1.bind();
             g.texture();
             g.draw(quad);
-            tex.unbind();
+            tex1.unbind();
 
             g.popMatrix();
           } else {
@@ -461,10 +485,10 @@ struct VideoPlayer {
             g.rotate(renderPose.get().quat());
             g.scale(renderScale.get());
             // g.scale((float)videoDecoder.width() / (float)videoDecoder.height(), 1, 1);
-            tex.bind();
+            tex1.bind();
             g.texture();
             g.draw(sphere);
-            tex.unbind();
+            tex1.unbind();
 
             g.popMatrix();
           }
@@ -477,11 +501,11 @@ struct VideoPlayer {
           g.rotate(renderPose.get().quat());
           g.scale(renderScale.get());
           g.texture();
-          tex.bind();
-          g.scale((float)videoDecoder[i].width() / (float)videoDecoder[i].height(), 1,
+          tex1.bind();
+          g.scale((float)videoDecoder1->width() / (float)videoDecoder1->height(), 1,
                   1);
           g.draw(quad);
-          tex.unbind();
+          tex1.unbind();
         } else {
 
           // Renderer
@@ -493,13 +517,13 @@ struct VideoPlayer {
             // uniformChanged = false;
           // }
 
-          tex.bind();
+          tex1.bind();
           // TODO there is likely a better way to set the pose.
           g.translate(renderPose.get().pos());
           g.rotate(renderPose.get().quat());
           g.scale(renderScale.get());
           g.draw(sphere);
-          tex.unbind();
+          tex1.unbind();
         }
         g.popMatrix();
       }

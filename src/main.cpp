@@ -55,7 +55,13 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     navControl().tscale(2*0.1*0.5);
 
     oceanDataViewer.onCreate();
-    oceanDataViewer.loadChiData();
+
+    std::thread thread([&] {
+      oceanDataViewer.loadChiData();
+    });
+    thread.detach(); 
+
+    // oceanDataViewer.loadChiData();
 
     videoPlayer.onCreate(state(), isPrimary());
 
@@ -130,6 +136,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
         state().swtch[i] = false;
       return true;
 
+    case ' ':
+      oceanDataViewer.s_years = 1.0;
+      return true;
     default:
       return false;
     }
@@ -142,5 +151,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 int main() {
   SensoriumApp app;
   app.dimensions(1200, 800);
+  app.configureAudio(44100, 512, 2, 0);
   app.start();
 }

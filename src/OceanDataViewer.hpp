@@ -222,6 +222,7 @@ struct OceanDataViewer {
   Texture skyTex, sphereTex;
 
   VAOMesh pic[years][stressors];
+  bool loaded[years][stressors];
   VAOMesh cloud[num_cloud], co2_mesh[num_county];
   // VAOMesh cloud[num_cloud];
   // Mesh co2_mesh[num_county];
@@ -422,6 +423,14 @@ struct OceanDataViewer {
   }
 
   void onAnimate(double dt, Nav &nav, State &state, bool isPrimary) {
+
+    for(int s=0; s < stressors; s++)
+      for(int y=0; y < years; y++)
+        if(loaded[y][s]){
+          pic[y][s].update();
+          loaded[y][s] = false;
+        }
+
     timer += dt;
     if (isPrimary) {
       Vec3f point_you_want_to_see =
@@ -575,9 +584,9 @@ struct OceanDataViewer {
 
   void onDraw(Graphics &g, Nav &nav, State &state) {
     g.clear(0);
-    g.culling(true);
+    g.culling(false);
     // g.cullFaceFront();
-    g.lighting(true);
+    // g.lighting(true);
     g.light(light);
     g.texture();
     g.depthTesting(true);
@@ -607,6 +616,7 @@ struct OceanDataViewer {
     // Draw data
     g.lighting(false);
 
+
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
         g.meshColor();
@@ -619,9 +629,9 @@ struct OceanDataViewer {
         g.pointSize(ps);
         // Update data pose when nav is inside of the globe
         if (state.radius < 2) {
-          g.scale(0.9);
+          g.scale(0.95);
         } else {
-          g.scale(1);
+          g.scale(1.0005);
         }
         g.draw(pic[(int)state.year - 2003]
                   [j]); // only needed if we go inside the earth
@@ -777,7 +787,8 @@ struct OceanDataViewer {
     });
   }
 
-  void loadChiData() {
+
+  void loadChiDataset(std::string path, int stressorIndex){
     Image oceanData;
     int data_W, data_H;
 
@@ -824,6 +835,56 @@ struct OceanDataViewer {
       }
       pic[d][stress].update();
     }
+  }
+
+  void loadChiData() {
+    Image oceanData;
+    int data_W, data_H;
+
+    // Bring ocean data (image)
+    // 0. SST
+    std::cout << "Start loading CHI data " << std::endl;
+    std::cout << "Start loading 0. SST" << std::endl;
+    int stress = 0;
+    for (int d = 0; d < years; d++) {
+      ostringstream ostr;
+      ostr << "data/chi/sst/sst_05_" << d + 2003
+           << "_equi.png"; // ** change stressor
+      char *filename = new char[ostr.str().length() + 1];
+      std::strcpy(filename, ostr.str().c_str());
+      oceanData = Image(filename);
+      pic[d][0].primitive(Mesh::POINTS);
+      data_W = oceanData.width();
+      data_H = oceanData.height();
+      point_dist = 2.002 + 0.001 * stress;
+      for (int row = 0; row < data_H; row++) {
+        float theta = row * M_PI / data_H;
+        float sinTheta = sin(theta);
+        float cosTheta = cos(theta);
+        for (int column = 0; column < data_W; column++) {
+          auto pixel = oceanData.at(column, data_H - row - 1);
+          if (pixel.r > 0) {
+            // {
+            float phi = column * M_2PI / data_W;
+            float sinPhi = sin(phi);
+            float cosPhi = cos(phi);
+
+            float x = sinPhi * sinTheta;
+            float y = -cosTheta;
+            float z = cosPhi * sinTheta;
+            // TODO: This can be preprocessed for shorting the load time - ML
+            pic[d][stress].vertex(x * point_dist, y * point_dist,
+                                  z * point_dist);
+            // init color config
+            data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60,
+                             0.6 + atan(pixel.r / 300));
+            pic[d][stress].color(data_color);
+          }
+        }
+      }
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
+    }
     // 1. Nutrients
     stress = 1;
     std::cout << "Start loading 1. Nutrients" << std::endl;
@@ -863,7 +924,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 2. Shipping
     stress = 2;
@@ -904,7 +966,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 3. Ocean Acidification
     stress = 3;
@@ -945,7 +1008,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 4. Sea level rise
     stress = 4;
@@ -987,7 +1051,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 5. Fishing demersal low
     stress = 5;
@@ -1027,7 +1092,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 6. Fishing demersal high
     stress = 6;
@@ -1067,7 +1133,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 7. Fishing pelagic low
     stress = 7;
@@ -1107,7 +1174,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 8. Fishing pelagic high
     stress = 8;
@@ -1147,7 +1215,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 9. Direct human
     stress = 9;
@@ -1187,7 +1256,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 10. Organic chemical
     stress = 10;
@@ -1227,7 +1297,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     // 11. Cumulative human impacts
     stress = 11;
@@ -1267,7 +1338,8 @@ struct OceanDataViewer {
           }
         }
       }
-      pic[d][stress].update();
+      // pic[d][stress].update();
+      loaded[d][stress] = true;
     }
     std::cout << "Loaded CHI data. Preprocessed" << std::endl;
   }
