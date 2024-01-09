@@ -161,45 +161,109 @@ struct OceanDataViewer {
   }
   )";
 
+  const std::string fadevert = R"(
+  #version 330
+  uniform mat4 al_ModelViewMatrix;
+  uniform mat4 al_ProjectionMatrix;
+
+  layout (location = 0) in vec3 position;
+  layout (location = 2) in vec2 texcoord;
+
+  uniform float eye_sep;
+  uniform float foc_len;
+
+  out vec2 texcoord_;
+
+  vec4 stereo_displace(vec4 v, float e, float f) {
+    // eye to vertex distance
+    float l = sqrt((v.x - e) * (v.x - e) + v.y * v.y + v.z * v.z);
+    // absolute z-direction distance
+    float z = abs(v.z);
+    // x coord of projection of vertex on focal plane when looked from eye
+    float t = f * (v.x - e) / z;
+    // x coord of displaced vertex to make displaced vertex be projected on focal plane
+    // when looked from origin at the same point original vertex would be projected
+    // when looked form eye
+    v.x = z * (e + t) / f;
+    // set distance from origin to displaced vertex same as eye to original vertex
+    v.xyz = normalize(v.xyz);
+    v.xyz *= l;
+    return v;
+  }
+
+  void main() {
+    if (eye_sep == 0) {
+      gl_Position = al_ProjectionMatrix * al_ModelViewMatrix * vec4(position, 1.0);
+    }
+    else {
+      gl_Position = al_ProjectionMatrix * stereo_displace(al_ModelViewMatrix * vec4(position, 1.0), eye_sep, foc_len);
+    }
+
+    texcoord_ = texcoord;
+  }
+  )";
+
+  const std::string fadefrag = R"(
+  #version 330
+  uniform sampler2D tex0;
+  uniform sampler2D tex1;
+  uniform float blend0;
+  uniform float blend1;
+  uniform float brightness;
+
+  in vec2 texcoord_;
+  out vec4 frag_color;
+
+  // can apply filters here
+  void main() {
+    vec4 c0 = blend0 * texture(tex0, texcoord_);
+    vec4 c1 = blend1 * texture(tex1, texcoord_);
+    frag_color = brightness * (c0 + c1);
+  }
+  )";
+
+
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
+  ParameterVec3 llr{"llr", ""};
+  ParameterPose camPose{"camPose", ""};
   Parameter lux{"Light", 0.6, 0, 2.5};
   Parameter year{"Year", 2003, 2003, 2013};
   // Parameter trans{"Trans", 0.99, 0.1, 1};
   Parameter gain{"Audio", 0, 0, 2};
-  ParameterBool s_ci{"Cumulative impacts", "", 0.0};
-  ParameterBool s_oc{"Organic chemical pollution", "", 0.0};
-  ParameterBool s_np{"Nutrient pollution", "", 0.0};
-  ParameterBool s_dh{"Direct human", "", 0.0};
-  ParameterBool s_slr{"Sea level rise", "", 0.0};
-  ParameterBool s_oa{"Ocean acidification", "", 0.0};
-  ParameterBool s_sst{"Sea surface temperature", "", 0.0};
-  ParameterBool s_cf_pl{"Fishing - Pelagic low-bycatch", "", 0.0};
-  ParameterBool s_cf_ph{"Fishing - Pelagic high-bycatch", "", 0.0};
-  ParameterBool s_cf_dl{"Fishing - Demersal non-destructive high-bycatch", "",
+  ParameterBool s_ci{"Cumulative_impacts", "", 0.0};
+  ParameterBool s_oc{"Organic_chemical_pollution", "", 0.0};
+  ParameterBool s_np{"Nutrient_pollution", "", 0.0};
+  ParameterBool s_dh{"Direct_human", "", 0.0};
+  ParameterBool s_slr{"Sea_level_rise", "", 0.0};
+  ParameterBool s_oa{"Ocean_acidification", "", 0.0};
+  ParameterBool s_sst{"Sea_surface_temperature", "", 0.0};
+  ParameterBool s_cf_pl{"Fishing_Pelagic_low-bycatch", "", 0.0};
+  ParameterBool s_cf_ph{"Fishing_Pelagic_high-bycatch", "", 0.0};
+  ParameterBool s_cf_dl{"Fishing_Demersal_non-destructive_high-bycatch", "",
                         0.0};
-  ParameterBool s_cf_dh{"Fishing - Demersal non-desctructive low-bycatch", "",
+  ParameterBool s_cf_dh{"Fishing_Demersal_non-desctructive_low-bycatch", "",
                         0.0};
-  ParameterBool s_cf_dd{"Fishing - Demersal destructive", "", 0.0};
-  ParameterBool a_f{"Artisanal fishing", "", 0.0};
+  ParameterBool s_cf_dd{"Fishing_Demersal_destructive", "", 0.0};
+  ParameterBool a_f{"Artisanal_fishing", "", 0.0};
   ParameterBool s_shp{"Shipping", "", 0.0};
   ParameterBool s_cloud{"Clouds", "", 0.0};
-  ParameterBool s_cloud_storm{"Clouds - Storm", "", 0.0};
-  ParameterBool s_cloud_eu{"Clouds - EU", "", 0.0};
+  ParameterBool s_cloud_storm{"Clouds_Storm", "", 0.0};
+  ParameterBool s_cloud_eu{"Clouds_EU", "", 0.0};
   ParameterBool s_co2{"CO2", "", 0.0};
-  ParameterBool s_nav{"Explore Globe", "", 0.0};
-  ParameterBool s_years{"2003 - 2013", "", 0.0};
+  ParameterBool s_nav{"Explore_Globe", "", 0.0};
+  ParameterBool s_years{"2003_2013", "", 0.0};
 
   ParameterBool animateCam{"animateCam", "", 0.0};
-  ParameterBool faceTo{"Face Center", "", 1.0};
+  ParameterBool faceTo{"Face_Center", "", 1.0};
 
 
   // bool faceTo = true;
   // bool animateCam = false;
   Pose navTarget;
   float anim_speed = 0.0;
-  float anim_target_speed = 0.004;
+  float anim_target_speed = 0.002;
 
 
   GeoLoc sourceGeoLoc, targetGeoLoc;
@@ -528,7 +592,7 @@ struct OceanDataViewer {
         if (year == 2013) {
           year = 2013;
           state.molph = false;
-          s_years.set(0);
+          s_years.set(1);
         }
       }
       if (s_nav) {
@@ -597,6 +661,7 @@ struct OceanDataViewer {
     g.pushMatrix();
     skyTex.bind();
     g.translate(nav.pos());
+    g.rotate(nav.quat()); // keeps sky still
     g.draw(skyMesh);
     skyTex.unbind();
 
@@ -725,7 +790,7 @@ struct OceanDataViewer {
   void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, SequenceRecorder &rec, Nav &nav, State &state) {
     std::string displayText =
         "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
-    // *gui << lat << lon << radius << lux << year << gain;
+    *gui << lat << lon << radius; // << lux << year << gain;
     *gui << year;
     *gui << s_years;
     *gui << s_nav << faceTo << animateCam;
@@ -737,11 +802,16 @@ struct OceanDataViewer {
 
     // *gui << lat << lon << radius << lux << year << trans << gain;
 
-    presets << year;
+    presets << year << camPose;
     presets << s_years << s_nav;
     presets << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
     presets << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
     presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
+
+    seq << llr << s_years << s_nav << camPose;
+    seq << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+    seq << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
     // rec << year;
     // rec << s_years << s_nav;
@@ -750,39 +820,52 @@ struct OceanDataViewer {
     // rec << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
 
-    lat.registerChangeCallback([&](float value) {
-      nav.pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
-                          sin(lon.get() / 180.0 * M_PI),
-                      radius.get() * sin(value / 180.0 * M_PI),
-                      -radius.get() * cos(value / 180.0 * M_PI) *
-                          cos(lon.get() / 180.0 * M_PI)));
 
-      nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
+    camPose.registerChangeCallback([&](Pose p) {
+      nav.set(p);
+    });
+    llr.registerChangeCallback([&](Vec3f v) {
+      setGeoTarget(v.x, v.y, v.z);
+    });
+
+    lat.registerChangeCallback([&](float value) {
+      setGeoTarget(value, lon, radius);
+      // nav.pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
+      //                     sin(lon.get() / 180.0 * M_PI),
+      //                 radius.get() * sin(value / 180.0 * M_PI),
+      //                 -radius.get() * cos(value / 180.0 * M_PI) *
+      //                     cos(lon.get() / 180.0 * M_PI)));
+
+      // nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
 
     lon.registerChangeCallback([&](float value) {
-      nav.pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
-                          sin(value / 180.0 * M_PI),
-                      radius.get() * sin(lat.get() / 180.0 * M_PI),
-                      -radius.get() * cos(lat.get() / 180.0 * M_PI) *
-                          cos(value / 180.0 * M_PI)));
-      nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
+      setGeoTarget(lat, value, radius);
+      // nav.pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
+      //                     sin(value / 180.0 * M_PI),
+      //                 radius.get() * sin(lat.get() / 180.0 * M_PI),
+      //                 -radius.get() * cos(lat.get() / 180.0 * M_PI) *
+      //                     cos(value / 180.0 * M_PI)));
+      // nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
 
     radius.registerChangeCallback([&](float value) {
-      nav.pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
-                          sin(lon.get() / 180.0 * M_PI),
-                      value * sin(lat.get() / 180.0 * M_PI),
-                      -value * cos(lat.get() / 180.0 * M_PI) *
-                          cos(lon.get() / 180.0 * M_PI)));
-      nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
+      setGeoTarget(lat, lon, value);
+      // nav.pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
+      //                     sin(lon.get() / 180.0 * M_PI),
+      //                 value * sin(lat.get() / 180.0 * M_PI),
+      //                 -value * cos(lat.get() / 180.0 * M_PI) *
+      //                     cos(lon.get() / 180.0 * M_PI)));
+      // nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
 
     s_years.registerChangeCallback([&](int value) {
       if (value) {
-        state.molph = !state.molph;
+        state.molph = true; //!state.molph;
         year = 2003;
-        s_years.set(0);
+        // s_years.set(0);
+      } else { 
+        state.molph = false;
       }
     });
   }

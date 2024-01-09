@@ -1,22 +1,32 @@
 ::1
-/2003 i 0 
-/Audio f 0.600000 
+/2003_2013 i 0 
+/Audio_Volume f 0.600000 
 /CO2 i 0 
 /Clouds i 0 
-/Cumulative i 0 
-/Direct i 0 
-/Explore i 0 
-/Fishing i 0 
+/Clouds_EU i 0 
+/Clouds_Storm i 0 
+/Cumulative_impacts i 0 
+/Direct_human i 0 
+/Explore_Globe i 0 
+/Fishing_Demersal_non-desctructive_low-bycatch i 0 
+/Fishing_Demersal_non-destructive_high-bycatch i 0 
+/Fishing_Pelagic_high-bycatch i 0 
+/Fishing_Pelagic_low-bycatch i 0 
 /Light f 0.600000 
-/Nutrient i 0 
-/Ocean i 0 
-/Organic i 0 
+/Nutrient_pollution i 0 
+/Ocean_acidification i 0 
+/Organic_chemical_pollution i 0 
 /Play_Audio i 1 
 /Rewind i 1 
-/Sea i 0 
+/Sea_level_rise i 0 
+/Sea_surface_temperature i 0 
 /Shipping i 0 
+/Sub_Volume f 0.600000 
 /Year f 2003.000000 
+/blend0 f 0.000000 
+/blend1 f 1.000000 
+/brightness f 1.000000 
+/camPose fffffff 23.698849 0.000000 -43.574905 0.246493 0.000000 0.969144 0.000000 
 /playingVideo i 0 
 /renderVideoInSim i 1 
-/videoGamma f 1.000000 
 ::

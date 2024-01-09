@@ -37,10 +37,10 @@ struct AudioPlayer {
     seq << playAudio << rewindAudio << AudioVolume << SubVolume;
 
     playAudio.registerChangeCallback([&](float value) {
-      audioPlayerTS.setPlay();
+      if(value == 1.0) audioPlayerTS.setPlay();
     });
     rewindAudio.registerChangeCallback([&](float value) {
-      audioPlayerTS.setRewind();
+      if(value == 1.0) audioPlayerTS.setRewind();
     });
     playLoop.registerChangeCallback([&](float value) {
       if (value) {
@@ -50,7 +50,7 @@ struct AudioPlayer {
       }
     });
     pauseAudio.registerChangeCallback([&](float value) {
-      audioPlayerTS.setPause();
+      if(value == 1.0) audioPlayerTS.setPause();
     });
   }
   void onSound(AudioIOData& io) {

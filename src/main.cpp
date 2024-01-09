@@ -54,7 +54,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   void onCreate() override {
 
     lens().fovy(45).eyeSep(0);
-    nav().pos(0, 0, -5);
+    nav().pos(0, 0, -30);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
     navControl().vscale(0.125*0.1*0.5);
@@ -99,6 +99,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   }
 
   void onAnimate(double dt) override {
+    oceanDataViewer.camPose.setNoCalls(nav());
     oceanDataViewer.onAnimate(dt, nav(), state(), isPrimary());
     videoPlayer.onAnimate(dt, state(), isPrimary());
   }
@@ -130,7 +131,13 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       }
       if (k.key() == ' ') {
         // Notice that you don't need to add the extension ".sequence" to the name
-        sequencer.playSequence("sensorium");
+        sequencer.setVerbose(true);
+        if(sequencer.running()){
+          sequencer.stopSequence("sensorium");
+          videoPlayer.playingVideo = false;
+        }else{
+          sequencer.playSequence("sensorium");
+        }
       }
     }
     return true;

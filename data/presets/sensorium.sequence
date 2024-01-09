@@ -1,13 +1,47 @@
+# preset 1 initialize start
 1:0.0:0.0
+
+
+# start piece
+# fly over germany, animate sea level rise
++0.1:/llr:53.5,9.95,3.5
++5.0:/Sea_level_rise:1
++0.1:/2003_2013:1
+
+
+
 #+0.1:/Play_Water:1.0
-# 1:17
-+77.0:/Play_AerialImages:1.0
+# 1:17 - dt ???
++45.0:/Play_AerialImages:1.0
+
 # 2:36 - dt 1:19
-+79.0:/Play_Boardwalk:1.0
++79.0:/blend1:0.0:1.0
++1.0:/Play_Boardwalk:1.0
++0.1:/blend1:1.0:1.0
+
 # 3:14 - dt 0:38
 +38.0:/Play_Coral:1.0
+
 # 4:10 - dt 0:56
 +56.0:/Play_Overfishing:1.0
+
 # 6:15 - dt 2:05
 +125.0:/Play_Boat:1.0
+
+
+# globe locations
+#+0.1:/llr:33,-118,5
+#+0.1:/llr:53.5,9.95,3.5
+#+0.1:/llr:54.4,12.59,3.5
+#+0.1:/llr:53.9,9.53,3.5
+#+0.1:/llr:53.78,9.41,3.5
+#+0.1:/llr:0,-80,30
+#+0.1:/llr:0,138,0.01
+
+# video fade out and in example
+#+0.1:/Play_AerialImages:1.0
+#+2.0:/blend1:0.0:1.0
+#+1.0:/Play_Boardwalk:1.0
+#+0.1:/blend1:1.0:1.0
+
 ::
