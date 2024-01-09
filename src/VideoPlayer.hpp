@@ -188,7 +188,8 @@ struct VideoPlayer {
       playingVideo.set(1.0);
     });
     playCoral.registerChangeCallback([&](float value) {
-      videoToLoad.set("Sensorium_Mono_Final_Comped_02.mov");
+      videoToLoad.set("Sensorium_Mono_Final_Comped_02_1080p.mov");
+      // videoToLoad.set("Sensorium_Mono_Final_Comped_02.mov");
       playingVideo.set(1.0);
     });
     playOverfishing.registerChangeCallback([&](float value) {
