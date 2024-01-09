@@ -449,7 +449,7 @@ struct VideoPlayer {
       // }
     }
 
-    if (state.videoPlaying && state.videoRendering) {
+    if (state.videoPlaying && state.videoRendering && videoDecoder1 != NULL) {
       uint8_t *frame = videoDecoder1->getVideoFrame(state.global_clock);
 
       if (frame) {
