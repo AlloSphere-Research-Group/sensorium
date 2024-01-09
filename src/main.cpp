@@ -39,7 +39,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     // server.start();
 
     if(isPrimary() && al::sphere::isSphereMachine()){
-      audioIO().channelsOut(60);
+      audioIO().channelsOut(70);
       audioIO().print();
     }
 

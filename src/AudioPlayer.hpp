@@ -14,7 +14,8 @@ struct AudioPlayer {
   ParameterBool playLoop{"Loop Audio", "", 1};
   ParameterBool pauseAudio{"Pause Audio", "", 0};
   ParameterBool rewindAudio{"Rewind Audio", "", 0};
-  Parameter AudioVolume{"Audio Volume", 0.6, 0, 2.5};
+  Parameter AudioVolume{"Audio_Volume", 0.6, 0, 2.5};
+  Parameter SubVolume{"Sub_Volume", 0.6, 0, 2.5};
 
   void onInit(){
     // const char name[] = "data/jkm-wave-project.wav";
@@ -30,10 +31,10 @@ struct AudioPlayer {
     audioPlayerTS.setLoop();
   }
   void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, State &state) {
-    *gui << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume;
+    *gui << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume << SubVolume;
     
-    presets << AudioVolume << playAudio << rewindAudio;
-    seq << playAudio << rewindAudio;
+    presets << AudioVolume << SubVolume << playAudio << rewindAudio;
+    seq << playAudio << rewindAudio << AudioVolume << SubVolume;
 
     playAudio.registerChangeCallback([&](float value) {
       audioPlayerTS.setPlay();
@@ -69,11 +70,13 @@ struct AudioPlayer {
       float r = buffer[idx + second];
 
       if(al::sphere::isSphereMachine()){
-        for(int i=17; i < 32; i++)
-          io.out(i) = l * AudioVolume * 0.1;
-        for(int i=32; i < 47; i++)
-          io.out(i) = r * AudioVolume * 0.1;
-        io.out(48) = (l+r) * AudioVolume;
+        for(int i=1; i <= 12; i++)
+          io.out(i) = l * AudioVolume * 0.2;
+        io.out(24) = l * AudioVolume * 1.0;
+        for(int i=49; i <= 60; i++)
+          io.out(i) = r * AudioVolume * 0.2;
+        io.out(39) = r * AudioVolume * 1.0;
+        io.out(48) = (l+r) * SubVolume * 0.5;
       } else {
         io.out(0) = l * AudioVolume;
         io.out(1) = r * AudioVolume;
