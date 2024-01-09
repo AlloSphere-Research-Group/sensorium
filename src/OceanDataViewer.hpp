@@ -808,7 +808,7 @@ struct OceanDataViewer {
     presets << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
     presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
-    seq << llr << s_years << s_nav << camPose;
+    seq << llr << s_years << s_nav << camPose << faceTo;
     seq << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
     seq << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
     seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;

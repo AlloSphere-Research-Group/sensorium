@@ -161,7 +161,7 @@ struct VideoPlayer {
     *gui << renderPose << renderScale;
     
     presets << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
-    seq << videoToLoad << blend0 << blend1 << swapVideo;
+    seq << videoToLoad << blend0 << blend1 << swapVideo << playingVideo;
     seq << playBoardwalk << playCoral << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << playWater; //<< renderPose << renderScale;
     
     // these change callbacks should run only on primary

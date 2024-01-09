@@ -8,13 +8,13 @@
 +5.0:/Sea_level_rise:1
 +0.1:/2003_2013:1
 
-
-
+# water rising xxx
 #+0.1:/Play_Water:1.0
+
 # 1:17 - dt ???
 +44.0:/blend1:0.0:1.0
 +1.0:/Play_AerialImages:1.0
-+0.1:/blend1:1.0:1.0
++0.5:/blend1:1.0:1.0
 
 # 2:36 - dt 1:19
 +70.0:/blend1:0.0:1.0
@@ -32,9 +32,23 @@
 +0.1:/blend1:1.0:1.0
 
 # 6:15 - dt 2:05
-+120.0:/blend1:0.0:1.0
++100.0:/blend1:0.0:1.0
 +1.0:/Play_Boat:1.0
-+0.1:/blend1:1.0:1.0
++2.0:/blend1:1.0:5.0
+
+
+# wait for back to globe
++48.0:/Sea_level_rise:1
++0.1:/Face_Center:0
++0.1:/llr:0,138,0.01
++0.1:/2003_2013:1
++0.1:/Shipping:1
+
++0.1:/blend1:0.0:5.0
++5.0:/playingVideo:0.0
+
+
+
 
 
 # globe locations
