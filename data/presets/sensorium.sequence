@@ -38,28 +38,36 @@
 
 
 # wait for back to globe
-+48.0:/Sea_level_rise:1
-+0.1:/Face_Center:0
++48.0:/Sea_level_rise:0
++0.1:/Face_Center:1
 +0.1:/llr:0,138,0.01
-+0.1:/2003_2013:1
-+0.1:/Shipping:1
-
 +0.1:/blend1:0.0:5.0
 +5.0:/playingVideo:0.0
 
+# wait 5 show shipping
++5.0:/Shipping:1
++0.1:/2003_2013:1
 
-# fly back out
-+20.0:/Shipping:0
-+0.1:/llr:33,-118,10
-+0.1:/Explore_Globe:1
+# wait 5 show sst
++5.0:/Shipping:0
 +0.1:/Sea_surface_temperature:1
-+10.0:/Sea_surface_temperature:0
-+0.1:/Ocean_acidification:1
-+10.0:/Ocean_acidification:0
-+0.1:/Cumulative_impacts:1
-+10.0:/Cumulative_impacts:0
 
-+0.1:/llr:0,-80,30
+# wait 5 show sst
++5.0:/Sea_surface_temperature:0
++0.1:/Fishing_Pelagic_low-bycatch:1
++0.1:/Fishing_Pelagic_high-bycatch:1
+
+# wait 5 show sst
++5.0:/Fishing_Pelagic_low-bycatch:0
++0.1:/Fishing_Pelagic_high-bycatch:0
+
+
+# wait 5 fly back out
++5.0:/llr:33,-118,10
++0.1:/Explore_Globe:1
++0.1:/Face_Center:1
+
++20.0:/llr:0,-80,30
 
 
 
