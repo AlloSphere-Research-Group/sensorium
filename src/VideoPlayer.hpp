@@ -183,7 +183,7 @@ struct VideoPlayer {
     
     presets << renderVideoInSim << playingVideo << videoGamma;
     seq << video1;
-    seq << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << playWater; //<< renderPose << renderScale;
+    seq << playBoardwalk << playCoral << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << playWater; //<< renderPose << renderScale;
     
     // rec << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
 

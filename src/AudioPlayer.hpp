@@ -10,7 +10,7 @@ struct AudioPlayer {
 
   SoundFilePlayerTS audioPlayerTS;
   std::vector<float> buffer;
-  ParameterBool playAudio{"Play Audio", "", 0};
+  ParameterBool playAudio{"Play_Audio", "", 0};
   ParameterBool playLoop{"Loop Audio", "", 1};
   ParameterBool pauseAudio{"Pause Audio", "", 0};
   ParameterBool rewindAudio{"Rewind Audio", "", 0};
@@ -29,10 +29,11 @@ struct AudioPlayer {
     audioPlayerTS.setPause();
     audioPlayerTS.setLoop();
   }
-  void registerParams(ControlGUI *gui, PresetHandler &presets, State &state) {
+  void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, State &state) {
     *gui << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume;
     
-    presets << AudioVolume;
+    presets << AudioVolume << playAudio << rewindAudio;
+    seq << playAudio << rewindAudio;
 
     playAudio.registerChangeCallback([&](float value) {
       audioPlayerTS.setPlay();

@@ -42,7 +42,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onInit();
     audioPlayer.onInit();
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed;
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed << videoPlayer.video1;
 
   }
 
@@ -75,7 +75,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
       oceanDataViewer.registerParams(gui, presets, sequencer, recorder, nav(), state());
       videoPlayer.registerParams(gui, presets, sequencer, recorder, state());
-      audioPlayer.registerParams(gui, presets, state());
+      audioPlayer.registerParams(gui, presets, sequencer, state());
 
       sequencer << presets;
       // *gui << sequencer << recorder;
@@ -116,7 +116,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       }
       if (k.key() == ' ') {
         // Notice that you don't need to add the extension ".sequence" to the name
-        sequencer.playSequence("test");
+        sequencer.playSequence("sensorium");
       }
     }
     return true;
