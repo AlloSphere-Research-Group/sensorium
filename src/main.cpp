@@ -42,7 +42,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onInit();
     audioPlayer.onInit();
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed << videoPlayer.video1 << videoPlayer.video2;
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.videoToLoad << videoPlayer.brightness << videoPlayer.blend0 << videoPlayer.blend1;
 
   }
 
@@ -81,13 +81,13 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       // *gui << sequencer << recorder;
     }
 
-    videoPlayer.video1.registerChangeCallback([&](std::string value) {
-      std::cout << "loading file to video1: " << value << std::endl;
-      videoPlayer.loadVideo1 = true;
+    videoPlayer.videoToLoad.registerChangeCallback([&](std::string value) {
+      std::cout << "loading file to videoDecoderNext: " << value << std::endl;
+      videoPlayer.loadVideo = true;
     });
-    videoPlayer.video2.registerChangeCallback([&](std::string value) {
-      std::cout << "loading file to video2: " << value << std::endl;
-      videoPlayer.loadVideo2 = true;
+    videoPlayer.swapVideo.registerChangeCallback([&](float value) {
+      std::cout << "swap video to videoDecode" << std::endl;
+      videoPlayer.doSwapVideo = true;
     });
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
@@ -105,7 +105,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
 
   void onDraw(Graphics &g) override {
-    if(!state().videoRendering)
+    if(!state().videoPlaying)
       oceanDataViewer.onDraw(g, nav(), state());
     
     videoPlayer.onDraw(g, nav(), state(), isPrimary());

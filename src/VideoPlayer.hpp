@@ -56,23 +56,19 @@ struct VideoPlayer {
   const std::string pano_frag = R"(
   #version 330
   uniform sampler2D tex0;
-  uniform float exposure;
+  uniform sampler2D tex1;
+  uniform float blend0;
+  uniform float blend1;
+  uniform float brightness;
 
   in vec2 texcoord_;
   out vec4 frag_color;
 
-  mat4 exposureMat (float value) {
-    return mat4(value, 0, 0, 0,
-                0, value, 0, 0,
-                0, 0, value, 0,
-                0, 0, 0, 1);
-  }
-
   // can apply filters here
   void main() {
-    frag_color = exposureMat(exposure) * texture(tex0, texcoord_);
-
-    // frag_color = texture(tex0, texcoord_);
+    vec4 c0 = blend0 * texture(tex0, texcoord_);
+    vec4 c1 = blend1 * texture(tex1, texcoord_);
+    frag_color = brightness * (c0 + c1);
   }
   )";
 
@@ -124,41 +120,24 @@ struct VideoPlayer {
     return m.vertices().size();
   }
 
-
-  struct MappedAudioFile {
-    // std::unique_ptr<SoundFileBuffered> soundfile;
-    std::vector<size_t> outChannelMap;
-    std::string fileInfoText;
-    std::string fileName;
-    float gain;
-    bool mute{false};
-  };
-
-  Texture tex1, tex2;
-  VAOMesh quad, sphere;
-  bool equirectangular{true};
-
   ShaderProgram pano_shader;
-  float exposure;
-  bool uniformChanged{false};
 
-  // int localVideoIndex{-1};
-  VideoDecoder *videoDecoder1{NULL};
-  VideoDecoder *videoDecoder2{NULL};
-  bool loadVideo1;
-  bool loadVideo2;
+  Texture tex0, tex1;
+  VAOMesh quad, sphere;
+
+  VideoDecoder *videoDecoder{NULL};
+  VideoDecoder *videoDecoderNext{NULL};
+  bool loadVideo, doSwapVideo;
+
   std::string dataPath;
 
-  std::vector<MappedAudioFile> soundfiles;
-  uint64_t samplesPlayed{0};
-  int32_t audioDelay{0};
-
-  ParameterString video1{"video1", ""};
-  ParameterString video2{"video2", ""};
+  ParameterString videoToLoad{"videoToLoad", ""};
 
   ParameterBool playingVideo{"playingVideo", "", 0.0};
   ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
-  Parameter videoGamma{"videoGamma", "", 1.0, 0.0, 2.0};
+  Parameter brightness{"brightness", "", 1.0, 0.0, 2.0};
+  Parameter blend0{"blend0", "", 1.0, 0.0, 1.0};
+  Parameter blend1{"blend1", "", 1.0, 0.0, 1.0};
   
   Trigger playWater{"Play_Water", ""};
   Trigger playAerialImages{"Play_AerialImages", ""};
@@ -168,132 +147,114 @@ struct VideoPlayer {
   Trigger playOverfishing{"Play_Overfishing", ""};
   Trigger playAcidification{"Play_Acidification", ""};
   Trigger playBoat{"Play_Boat", ""};
+  Trigger swapVideo{"swapVideo", ""};
 
-  ParameterBool windowed{"windowed", "", 0.0};
-  ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, -4))};
+  ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, 0))};
   ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
 
 
   void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
-    *gui << renderVideoInSim << playingVideo << videoGamma;
+    *gui << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
     *gui << playWater << playAerialImages << playSF;
     *gui << playBoardwalk << playCoral;
-    *gui << playOverfishing << playAcidification << playBoat;
+    *gui << playOverfishing << playAcidification << playBoat << swapVideo;
     *gui << renderPose << renderScale;
     
-    presets << renderVideoInSim << playingVideo << videoGamma;
-    seq << video1;
+    presets << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
+    seq << videoToLoad << blend0 << blend1 << swapVideo;
     seq << playBoardwalk << playCoral << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << playWater; //<< renderPose << renderScale;
     
-    // rec << renderVideoInSim << playingVideo << videoGamma << playBoardwalk << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << renderPose << renderScale;
-
+    // these change callbacks should run only on primary
     playingVideo.registerChangeCallback([&](float value) {
-      state.global_clock = 0.0;
-      state.videoPlaying = false;
-      state.videoRendering = false;
+      if(value == 1.0){
+        // state.global_clock = 0.0;
+        // state.global_clock_next = 0.0;
+        state.videoPlaying = true;
+      } else {
+        state.videoPlaying = false;
+      }
     });
-
 
     playAerialImages.registerChangeCallback([&](float value) {
-      video1.set("aerialimages_+_sf (1080p).mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("aerialimages_+_sf (1080p).mp4");
+      playingVideo.set(1.0);
     });
     playSF.registerChangeCallback([&](float value) {
-      video1.set("sfmegamodel_v8 (1080p).mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("sfmegamodel_v8 (1080p).mp4");
+      playingVideo.set(1.0);
     });
     playBoardwalk.registerChangeCallback([&](float value) {
-      video1.set("boardwalk_preview_v8 (1080p).mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("boardwalk_preview_v8 (1080p).mp4");
+      playingVideo.set(1.0);
     });
     playCoral.registerChangeCallback([&](float value) {
-      video1.set("Sensorium_Mono_Final_Comped_02.mov");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("Sensorium_Mono_Final_Comped_02.mov");
+      playingVideo.set(1.0);
     });
     playOverfishing.registerChangeCallback([&](float value) {
-      video1.set("overfishing_scene_comp_2 (1080p).mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("overfishing_scene_comp_2 (1080p).mp4");
+      playingVideo.set(1.0);
     });
     playAcidification.registerChangeCallback([&](float value) {
-      video1.set("sensorium_preview (1080p).mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("sensorium_preview (1080p).mp4");
+      playingVideo.set(1.0);
     });
     playBoat.registerChangeCallback([&](float value) {
-      video1.set("sensorium_boat_scene_12 (1080p).mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("sensorium_boat_scene_12 (1080p).mp4");
+      playingVideo.set(1.0);
     });
     playWater.registerChangeCallback([&](float value) {
-      video1.set("out3r2x.mp4");
-      playingVideo.setNoCalls(1.0);
-      state.global_clock = 0.0;
-      state.videoPlaying = true;
-      state.videoRendering = true;
+      videoToLoad.set("out3r2x.mp4");
+      playingVideo.set(1.0);
     });
 
   }
 
 
-  void loadVideoFile1(std::string videoFileUrl) {
-    std::string path = dataPath + videoFileUrl;
+  void loadVideoFile(State &state, bool isPrimary){
+    std::string path = dataPath + videoToLoad.get();
 
-    if(videoDecoder1 != NULL){
-      videoDecoder1->stop();
+    if(videoDecoderNext != NULL){
+      videoDecoderNext->stop();
+      videoDecoderNext = NULL;
     }
-    videoDecoder1 = new VideoDecoder();
-    videoDecoder1->enableAudio(false);
+    videoDecoderNext = new VideoDecoder();
+    videoDecoderNext->enableAudio(false);
 
-    if (!videoDecoder1->load(path.c_str())) {
+    if (!videoDecoderNext->load(path.c_str())) {
       std::cerr << "Error loading video file: " << path << std::endl;
     }
+    loadVideo = false;
 
-    videoDecoder1->start();
-    loadVideo1 = false;
-    
-    tex1.create2D(videoDecoder1->width(), videoDecoder1->height(), Texture::RGBA8,
+    videoDecoderNext->start();
+
+    tex1.create2D(videoDecoderNext->width(), videoDecoderNext->height(), Texture::RGBA8,
             Texture::RGBA, Texture::UBYTE);
+
+    if(isPrimary) state.global_clock_next = 0.0;
   };
 
-  void onInit(){
-    exposure = 1.0f;
+  // void playVideo(){
+  //   videoDecoderNext->start();
+  // }
 
-    // parameterServer() << renderPose << renderScale << windowed;
-    // configureAudio();
-    // for (const auto &sf : soundfiles) {
-    //   sf.soundfile->seek(-audioDelay);
-    // }
-    samplesPlayed = -audioDelay;
-    // if (sphere::isRendererMachine()) {
-    //   gainComp.configure(AlloSphereSpeakerLayoutCompensated());
-    //   audioIO().append(gainComp);
-    // }
-    // Doesn't work to avoid stereo display
-    // if (!isPrimary() && omniRendering) {
-    //   // Disable stereo
-    //   omniRendering->stereo(false);
-    //   displayMode(Window::DEFAULT_BUF);
-    // }
+  void swapNextVideo(State &state, bool isPrimary){
+    if(videoDecoder != NULL){
+      videoDecoder->stop();
+      videoDecoder = NULL;
+    }
+    if(videoDecoderNext != NULL){
+      tex0.create2D(videoDecoderNext->width(), videoDecoderNext->height(), Texture::RGBA8,
+              Texture::RGBA, Texture::UBYTE);
+
+      videoDecoder = videoDecoderNext;
+      videoDecoderNext = NULL;
+      if(isPrimary) state.global_clock = state.global_clock_next;
+    }
+    doSwapVideo = false;
   }
+
+  void onInit(){}
 
   void onCreate(State &state, bool isPrimary){
     if (sphere::isSphereMachine()) {
@@ -303,249 +264,102 @@ struct VideoPlayer {
         dataPath = "/Volumes/Data/Sensorium/video/";
       }
     } else {
-      // dataPath = "C:/Users/kenny/data/sensorium/";
       dataPath = "data/video/";
     }
 
     // compile & initialize shader
     pano_shader.compile(pano_vert, pano_frag);
-
     pano_shader.begin();
     pano_shader.uniform("tex0", 0);
-    pano_shader.uniform("exposure", exposure);
+    pano_shader.uniform("tex1", 1);
+    pano_shader.uniform("blend0", 1.0);
+    pano_shader.uniform("blend1", 1.0);
+    pano_shader.uniform("brightness", 1.0);
     pano_shader.end();
 
-    // TODO: temporarily disabled audio
-    // if (!isPrimary()) {
-    // for(int i=0; i < 6; i++)
-      // videoDecoder[i].enableAudio(false);
-    // }
-
-    // if (isPrimary()) {
-    // videoDecoder.setMasterSync(MasterSync::AV_SYNC_AUDIO);
-    // }
-
-    // TODO: check audio startup
-    // if (!videoDecoder.load(videoFileToLoad.c_str())) {
-    //   if (videoFileToLoad.size() > 0) {
-    //     std::cerr << "Error loading video file" << std::endl;
-    //     // quit();
-    //   }
-    // }
-
-    // // TODO: this can probably be extracted from video file metadata
-    equirectangular = true;
-
-    // videoDecoder.start();
-
     // generate texture
+    tex0.filter(Texture::LINEAR);
+    tex0.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
     tex1.filter(Texture::LINEAR);
     tex1.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    // tex1.create2D(videoDecoder.width(), videoDecoder.height(), Texture::RGBA8,
-    //             Texture::RGBA, Texture::UBYTE);
 
     // generate mesh
     addTexRect(quad, -1, 1, 2, -2);
     quad.update();
 
-    // addSphereWithTexcoords(sphere, 5, 20);
     addSphereWithEquirectTex(sphere, 10, 50);
     sphere.update();
 
-    // TODO: review high fps option with manual timing control
-    // set fps
     if (isPrimary) {
-      // fps(videoDecoder.fps());
-      // mtcReader.TCframes.setCurrent("30");
       state.global_clock = 0;
-      state.videoLoadIndex = -1;
+      state.global_clock_next = 0;
       state.videoPlaying = false;
-      state.videoRendering = false;
-      // playingVideo.set(0.0);
-      // showHUD = true;
     }
-    // if (!isPrimary() && omniRendering) {
-    //   // Disable stereo
-    //   omniRendering->stereo(false);
-    //   displayMode(Window::DEFAULT_BUF);
-    // }
 
-    // start GUI
-    // if (hasCapability(Capability::CAP_2DGUI)) {
-      // imguiInit();
-    // }
   }
 
   void onAnimate(al_sec dt, State &state, bool isPrimary){
-    // int i = state.videoLoadIndex;
 
-    // if(i >= 0 && !videoLoaded[i]){
-    //   switch(i){
-    //     case 0: loadVideoFile("aerialimages_+_sf (1080p).mp4",i); break;
-    //     case 1: loadVideoFile("sfmegamodel_v8 (1080p).mp4",i); break;
-    //     case 2: loadVideoFile("boardwalk_preview_v4_-_rain (1080p).mp4",i); break;
-    //     case 3: loadVideoFile("Sensorium_Mono_Final_Comped_02_1080p.mov",i); break;
-    //     case 4: loadVideoFile("overfishing_scene_comp_2 (1080p).mp4",i); break;
-    //     case 5: loadVideoFile("sensorium_preview (1080p).mp4",i); break;
-    //     case 6: loadVideoFile("sensorium_boat_scene_3 (1080p).mp4",i); break;
-    //     default: break;
-    //   }
-
-    //   tex1.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
-    //         Texture::RGBA, Texture::UBYTE);
-
-    // } else if(localVideoIndex != state.videoLoadIndex){
-    //   tex1.create2D(videoDecoder[i].width(), videoDecoder[i].height(), Texture::RGBA8,
-    //         Texture::RGBA, Texture::UBYTE);
-
-    //   localVideoIndex = state.videoLoadIndex;
-    // }
-    if(loadVideo1) loadVideoFile1(video1);
+    if(loadVideo) loadVideoFile(state, isPrimary);
+    if(doSwapVideo) swapNextVideo(state, isPrimary);
 
     if (isPrimary) {
-      // uint8_t hour{0}, minute{0}, second{0}, frame{0};
 
-      // if (syncToMTC.get() == 1.0) {
-        // TODO: review drift + handle offset (won't start at 0)
-        // mtcReader.getMTC(hour, minute, second, frame);
-
-        // state().global_clock = ((int32_t)hour * 360) + ((int32_t)minute * 60) +
-        //                       second + (frame / mtcReader.fps()) +
-        //                       mtcReader.frameOffset;
-      // } else 
       if (state.videoPlaying) {
         state.global_clock += dt;
-        state.videoGamma = videoGamma.get();
+        state.global_clock_next += dt;
       }
 
-      // if (hasCapability(Capability::CAP_2DGUI)) {
-      //   imguiBeginFrame();
 
-      //   ImGui::Begin("MIDI Time Code");
-
-        // ParameterGUI::draw(&playingVideo);
-      //   ParameterGUI::draw(&syncToMTC);
-      //   ParameterGUI::drawMIDIIn(&mtcReader.midiIn);
-      //   ParameterGUI::draw(&mtcReader.TCframes);
-      //   ParameterGUI::draw(&mtcReader.frameOffset);
-
-      //   ImGui::Text("%02i:%02i:%02i:%02i", hour, minute, second,
-      //               (int)(frame / mtcReader.fps() * 100));
-      //   ParameterGUI::draw(&renderPose);
-      //   ParameterGUI::draw(&renderScale);
-      //   ParameterGUI::draw(&windowed);
-
-      //   ImGui::End();
-      //   imguiEndFrame();
-      // }
     }
 
-    if (state.videoPlaying && state.videoRendering && videoDecoder1 != NULL) {
-      uint8_t *frame = videoDecoder1->getVideoFrame(state.global_clock);
-
-      if (frame) {
-        tex1.submit(frame);
-        videoDecoder1->gotVideoFrame();
+    if (state.videoPlaying){
+      uint8_t *frame;
+      if(videoDecoder != NULL){
+        frame = videoDecoder->getVideoFrame(state.global_clock);
+        if (frame) {
+          tex0.submit(frame);
+          videoDecoder->gotVideoFrame();
+        }
+      }
+      if(videoDecoderNext != NULL){
+        frame = videoDecoderNext->getVideoFrame(state.global_clock_next);
+        if (frame) {
+          tex1.submit(frame);
+          videoDecoderNext->gotVideoFrame();
+        }
       }
     }
   }
 
   void onDraw(Graphics &g, Nav& nav, State &state, bool isPrimary){
 
-    if (state.videoRendering) {
+    if (state.videoPlaying) {
       // nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
-      nav.setIdentity();
       // nav.pos().set(0);
+      nav.setIdentity();
 
-      int i = state.videoLoadIndex;
-      exposure = state.videoGamma;
       g.clear();
 
-      if (isPrimary) {
-        if(renderVideoInSim.get()){
-          if (windowed.get() == 1.0) {
-            g.pushMatrix();
-            g.translate(renderPose.get().pos());
-            g.rotate(renderPose.get().quat());
-            g.scale(renderScale.get());
-            g.scale((float)videoDecoder1->width() / (float)videoDecoder1->height(), 1,
-                    1);
-            tex1.bind();
-            g.texture();
-            g.draw(quad);
-            tex1.unbind();
-
-            g.popMatrix();
-          } else {
-            g.pushMatrix();
-            g.translate(renderPose.get().pos());
-            g.rotate(renderPose.get().quat());
-            g.scale(renderScale.get());
-            // g.scale((float)videoDecoder.width() / (float)videoDecoder.height(), 1, 1);
-            tex1.bind();
-            g.texture();
-            g.draw(sphere);
-            tex1.unbind();
-
-            g.popMatrix();
-          }
-        }
-      } else {
+      if (renderVideoInSim || !isPrimary) {
         g.pushMatrix();
-        if (windowed.get() == 1.0) {
-          // TODO there is likely a better way to set the pose.
-          g.translate(renderPose.get().pos());
-          g.rotate(renderPose.get().quat());
-          g.scale(renderScale.get());
-          g.texture();
-          tex1.bind();
-          g.scale((float)videoDecoder1->width() / (float)videoDecoder1->height(), 1,
-                  1);
-          g.draw(quad);
-          tex1.unbind();
-        } else {
-
-          // Renderer
-          g.shader(pano_shader);
-
-          // TODO: add exposure control
-          // if (uniformChanged) {
-          g.shader().uniform("exposure", exposure);
-            // uniformChanged = false;
-          // }
-
-          tex1.bind();
-          // TODO there is likely a better way to set the pose.
-          g.translate(renderPose.get().pos());
-          g.rotate(renderPose.get().quat());
-          g.scale(renderScale.get());
-          g.draw(sphere);
-          tex1.unbind();
-        }
+        g.shader(pano_shader);
+        g.shader().uniform("brightness", brightness);
+        g.shader().uniform("blend0", blend0);
+        g.shader().uniform("blend1", blend1);
+        tex0.bind(0);
+        tex1.bind(1);
+        g.translate(renderPose.get().pos());
+        g.rotate(renderPose.get().quat());
+        g.scale(renderScale.get());
+        g.draw(sphere);
+        tex0.unbind(0);
+        tex1.unbind(1);
+        
         g.popMatrix();
       }
     }
   }
-
-  // void onSound(AudioIOData &io){}
-  // bool onKeyDown(const Keyboard &k){}
-  // void onExit(){}
-
-  
-  // void configureAudio();
-
-  // bool loadAudioFile(std::string name, std::vector<size_t> channelMap,
-  //                    float gain, bool loop);
-  // void setAudioDelay(int32_t delaySamples) { audioDelay = delaySamples; }
-  // double wallTime{0};
-
-  void setWindowed(Pose pose, Vec3f scale){
-    windowed = 1.0;
-    renderPose.set(pose);
-    renderScale.set(scale);
-  }
-
-
   
   
 };
