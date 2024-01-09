@@ -42,7 +42,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onInit();
     audioPlayer.onInit();
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed << videoPlayer.video1;
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.windowed << videoPlayer.video1 << videoPlayer.video2;
 
   }
 
@@ -80,6 +80,15 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       sequencer << presets;
       // *gui << sequencer << recorder;
     }
+
+    videoPlayer.video1.registerChangeCallback([&](std::string value) {
+      std::cout << "loading file to video1: " << value << std::endl;
+      videoPlayer.loadVideo1 = true;
+    });
+    videoPlayer.video2.registerChangeCallback([&](std::string value) {
+      std::cout << "loading file to video2: " << value << std::endl;
+      videoPlayer.loadVideo2 = true;
+    });
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
   }

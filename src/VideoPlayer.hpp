@@ -193,15 +193,6 @@ struct VideoPlayer {
       state.videoRendering = false;
     });
 
-    video1.registerChangeCallback([&](std::string value) {
-      std::cout << "loading file to video1: " << value << std::endl;
-      loadVideo1 = true;
-    });
-    video2.registerChangeCallback([&](std::string value) {
-      std::cout << "loading file to video2: " << value << std::endl;
-      loadVideo2 = true;
-    });
-
 
     playAerialImages.registerChangeCallback([&](float value) {
       video1.set("aerialimages_+_sf (1080p).mp4");
