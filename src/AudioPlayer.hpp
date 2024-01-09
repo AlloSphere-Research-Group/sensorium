@@ -69,10 +69,11 @@ struct AudioPlayer {
       float r = buffer[idx + second];
 
       if(al::sphere::isSphereMachine()){
-        for(int i=0; i < 10; i++)
+        for(int i=17; i < 32; i++)
           io.out(i) = l * AudioVolume * 0.1;
-        for(int i=10; i < 20; i++)
+        for(int i=32; i < 47; i++)
           io.out(i) = r * AudioVolume * 0.1;
+        io.out(48) = (l+r) * AudioVolume;
       } else {
         io.out(0) = l * AudioVolume;
         io.out(1) = r * AudioVolume;
