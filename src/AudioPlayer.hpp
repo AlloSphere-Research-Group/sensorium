@@ -53,6 +53,7 @@ struct AudioPlayer {
     });
   }
   void onSound(AudioIOData& io) {
+
     int frames = (int)io.framesPerBuffer();
     int channels = audioPlayerTS.soundFile.channels;
     int bufferLength = frames * channels;
@@ -64,8 +65,18 @@ struct AudioPlayer {
     while (io()) {
       int frame = (int)io.frame();
       int idx = frame * channels;
-      io.out(0) = buffer[idx] * AudioVolume;
-      io.out(1) = buffer[idx + second] * AudioVolume;
+      float l = buffer[idx];
+      float r = buffer[idx + second];
+
+      if(al::sphere::isSphereMachine()){
+        for(int i=0; i < 10; i++)
+          io.out(i) = l * AudioVolume * 0.1;
+        for(int i=10; i < 20; i++)
+          io.out(i) = r * AudioVolume * 0.1;
+      } else {
+        io.out(0) = l * AudioVolume;
+        io.out(1) = r * AudioVolume;
+      }
     }
   }
 

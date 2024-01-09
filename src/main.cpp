@@ -38,6 +38,11 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     // server.handler(oscDomain()->handler());
     // server.start();
 
+    if(isPrimary() && al::sphere::isSphereMachine()){
+      audioIO().channelsOut(60);
+      audioIO().print();
+    }
+
     oceanDataViewer.onInit();
     videoPlayer.onInit();
     audioPlayer.onInit();
