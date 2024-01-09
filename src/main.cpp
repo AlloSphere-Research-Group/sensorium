@@ -42,7 +42,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onInit();
     audioPlayer.onInit();
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.videoToLoad << videoPlayer.brightness << videoPlayer.blend0 << videoPlayer.blend1;
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.videoToLoad << videoPlayer.brightness << videoPlayer.blend0 << videoPlayer.blend1 << videoPlayer.swapVideo;
 
   }
 
