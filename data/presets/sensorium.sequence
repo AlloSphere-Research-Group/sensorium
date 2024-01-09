@@ -14,7 +14,7 @@
 # 1:17 - dt ???
 +44.0:/blend1:0.0:1.0
 +1.0:/Play_AerialImages:1.0
-+0.5:/blend1:1.0:1.0
++0.5:/blend1:1.0:3.0
 
 # 2:36 - dt 1:19
 +70.0:/blend1:0.0:1.0
@@ -22,7 +22,7 @@
 +0.1:/blend1:1.0:1.0
 
 # 3:14 - dt 0:38
-+35.0:/blend1:0.0:1.0
++37.0:/blend1:0.0:1.0
 +1.0:/Play_Coral:1.0
 +0.1:/blend1:1.0:1.0
 
@@ -48,6 +48,18 @@
 +5.0:/playingVideo:0.0
 
 
+# fly back out
++20.0:/Shipping:0
++0.1:/llr:33,-118,10
++0.1:/Explore_Globe:1
++0.1:/Sea_surface_temperature:1
++10.0:/Sea_surface_temperature:0
++0.1:/Ocean_acidification:1
++10.0:/Ocean_acidification:0
++0.1:/Cumulative_impacts:1
++10.0:/Cumulative_impacts:0
+
++0.1:/llr:0,-80,30
 
 
 
