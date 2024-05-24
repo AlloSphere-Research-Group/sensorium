@@ -285,9 +285,13 @@ struct OceanDataViewer {
   Image skyImage, sphereImage;
   Texture skyTex, sphereTex;
 
-  VAOMesh pic[years][stressors];
+  static const int sstCount{261};
+  Texture sst[sstCount];
+
+  Texture pic[years][stressors];
   bool loaded[years][stressors];
-  VAOMesh cloud[num_cloud], co2_mesh[num_county];
+  Texture cloud[num_cloud];
+  VAOMesh co2_mesh[num_county];
   // VAOMesh cloud[num_cloud];
   // Mesh co2_mesh[num_county];
   float nation_lat[num_county], nation_lon[num_county];
@@ -307,7 +311,8 @@ struct OceanDataViewer {
   Texture pointTexture;
   Texture lineTexture;
   Texture texture;      // co2
-  ShaderProgram shader; // co2
+  ShaderProgram shaderParticle; // co2
+  ShaderProgram shaderDataset; // co2
 
   FBO renderTarget;
   Texture rendered;
@@ -373,41 +378,11 @@ struct OceanDataViewer {
     int cloud_W, cloud_H;
     for (int d = 0; d < num_cloud; d++) {
       ostringstream ostr;
-      ostr << "data/cloud/" << d << ".jpg"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      cloudData = Image(filename);
-      cloud[d].primitive(Mesh::POINTS);
-    }
-    // Assign color for cloud
-    for (int p = 0; p < num_cloud; p++) {
-      cloud_W = cloudData.width();
-      cloud_H = cloudData.height();
-      point_dist = 2.015 + 0.001 * p;
-      for (int row = 0; row < cloud_H; row++) {
-        double theta = row * M_PI / cloud_H;
-        double sinTheta = sin(theta);
-        double cosTheta = cos(theta);
-        for (int column = 0; column < cloud_W; column++) {
-          auto pixel = cloudData.at(column, cloud_H - row - 1);
-          if (pixel.r > 10) {
-            // {
-            double phi = column * M_2PI / cloud_W;
-            double sinPhi = sin(phi);
-            double cosPhi = cos(phi);
-
-            double x = sinPhi * sinTheta;
-            double y = -cosTheta;
-            double z = cosPhi * sinTheta;
-
-            cloud[p].vertex(x * point_dist, y * point_dist, z * point_dist);
-            // init color config
-            // end of assigning colors for data
-            cloud[p].color(Color(log(pixel.r / 50. + 3)));
-          }
-        }
-      }
-      cloud[p].update();
+      ostr << "data/cloud/" << d << ".jpg";
+      cloudData = Image(ostr.str());
+      cloud[d].create2D(cloudData.width(), cloudData.height());
+      cloud[d].submit(cloudData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+      cloud[d].filter(Texture::LINEAR);
     }
   }
 
@@ -482,18 +457,11 @@ struct OceanDataViewer {
 
     // compile and link the three shaders
     //
-    shader.compile(vertex, fragment, geometry);
+    shaderParticle.compile(vertex, fragment, geometry);
     ////
   }
 
   void onAnimate(double dt, Nav &nav, State &state, bool isPrimary) {
-
-    for(int s=0; s < stressors; s++)
-      for(int y=0; y < years; y++)
-        if(loaded[y][s]){
-          pic[y][s].update();
-          loaded[y][s] = false;
-        }
 
     timer += dt;
     if (isPrimary) {
@@ -520,54 +488,12 @@ struct OceanDataViewer {
         }
       }
 
-      // if (morphProgress > 0) {
-        
-      //   morphProgress -= dt;
-      //   if (morphProgress < 0) {
-      //     morphProgress = 0;
-      //     morphDuration = defaultMorph;
-      //     hoverDuration = defaultHover;
-      //   }
+      Vec3d pos = nav.pos();
+      radius.setNoCalls(pos.mag());
+      pos.normalize();
+      lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
+      lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
 
-      //   lat.set(targetGeoLoc.lat + (sourceGeoLoc.lat - targetGeoLoc.lat) *
-      //                                  (morphProgress / morphDuration));
-      //   lon.set(targetGeoLoc.lon + (sourceGeoLoc.lon - targetGeoLoc.lon) *
-      //                                  (morphProgress / morphDuration));
-      //   if (hoverDuration > 0) {
-      //     if (morphProgress + hoverDuration > morphDuration) {
-      //       radius.set(hoverHeight +
-      //                  (sourceGeoLoc.radius - hoverHeight) *
-      //                      (morphProgress - morphDuration + hoverDuration) /
-      //                      hoverDuration);
-      //     } else {
-      //       radius.set(targetGeoLoc.radius +
-      //                  (hoverHeight - targetGeoLoc.radius) *
-      //                      (morphProgress / (morphDuration - hoverDuration)));
-      //     }
-      //   } else {
-      //     radius.set(targetGeoLoc.radius +
-      //                (sourceGeoLoc.radius - targetGeoLoc.radius) *
-      //                    (morphProgress / morphDuration));
-      //   }
-      // } else {
-        Vec3d pos = nav.pos();
-        radius.setNoCalls(pos.mag());
-        pos.normalize();
-        lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
-        lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
-      // }
-      // To smooth transition between the years, use alpha value to be updated
-      // using varying time morph_year = year - floor(year); if (morph_year)
-      // {
-      //   for (int p = 0; p < stressors; p++)
-      //   {
-      //     for (int d = 0; d < years; d++)
-      //     {
-      //       data_color[d][p].a = year - floor(year);
-      //       pic[d][p].color(data_color[d][p]);
-      //     }
-      //   }
-      // }
       // CO2 Emission animate
       emission.update<5>();
       emission_mesh.reset();
@@ -670,52 +596,73 @@ struct OceanDataViewer {
     // sphere
     g.pushMatrix();
     sphereTex.bind();
-    g.cullFaceFront();
+    // g.cullFaceFront();
     g.draw(sphereMesh); // only needed if we go inside the earth
-    g.cullFaceBack();
-    g.draw(sphereMesh);
+    // g.cullFaceBack();
+    // g.draw(sphereMesh);
     sphereTex.unbind();
-
+    
     g.popMatrix();
 
     // Draw data
     g.lighting(false);
+    // g.blending(true);
+    // g.depthTesting(false);
+    gl::depthFunc(GL_LEQUAL);
+    // g.blendTrans();
+    g.blendAdd();
 
+    g.shader(shaderDataset);
+    shaderDataset.uniform("tex0", 0);
 
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
-        g.meshColor();
+        // g.clearDepth();
+
+        // shaderDataset.uniform("mapFunction", j);
+
+        pic[(int)state.year - 2003][j].bind();
+        // g.cullFaceFront();
+        g.draw(sphereMesh); // only needed if we go inside the earth
+        // g.cullFaceBack();
+        // g.draw(sphereMesh);
+        // g.meshColor();
         // g.blendTrans();
-        g.pushMatrix();
-        float ps = 50 / nav.pos().magSqr();
-        if (ps > 7) {
-          ps = 7;
-        }
-        g.pointSize(ps);
+        // g.pushMatrix();
+        // float ps = 50 / nav.pos().magSqr();
+        // if (ps > 7) {
+        //   ps = 7;
+        // }
+        // g.pointSize(ps);
         // Update data pose when nav is inside of the globe
-        if (state.radius < 2) {
-          g.scale(0.95);
-        } else {
-          g.scale(1.0005);
-        }
-        g.draw(pic[(int)state.year - 2003]
-                  [j]); // only needed if we go inside the earth
-        g.popMatrix();
+        // if (state.radius < 2) {
+        //   g.scale(0.95);
+        // } else {
+        //   g.scale(1.0005);
+        // }
+        // g.draw(pic[(int)state.year - 2003][j]);
+        // g.popMatrix();
       }
     }
     // draw cloud
     for (int j = 0; j < num_cloud; j++) {
       if (state.cloud_swtch[j]) {
-        g.meshColor();
-        // g.blendTrans();
-        g.pushMatrix();
-        float ps = 100 / nav.pos().magSqr();
-        if (ps > 7) {
-          ps = 7;
-        }
-        g.pointSize(0.4);
-        g.draw(cloud[j]); // only needed if we go inside the earth
-        g.popMatrix();
+        // g.clearDepth();
+        cloud[j].bind();
+        // g.cullFaceFront();
+        g.draw(sphereMesh);
+        // g.cullFaceBack();
+        // g.draw(sphereMesh);
+        // g.meshColor();
+        // // g.blendTrans();
+        // g.pushMatrix();
+        // float ps = 100 / nav.pos().magSqr();
+        // if (ps > 7) {
+        //   ps = 7;
+        // }
+        // g.pointSize(0.4);
+        // g.draw(cloud[j]); // only needed if we go inside the earth
+        // g.popMatrix();
       }
     }
     // Draw CO2
@@ -736,7 +683,7 @@ struct OceanDataViewer {
         g.rotate(nation_lon[nation], Vec3f(0, 1, 0));
         g.rotate(nation_lat[nation], Vec3f(1, 0, 1));
         g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
-        g.shader(shader);
+        g.shader(shaderParticle);
         float halfSize = 0.005 * co2;
         g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
         g.pointSize(co2);
@@ -871,562 +818,77 @@ struct OceanDataViewer {
   }
 
 
-  void loadChiDataset(std::string path, int stressorIndex){
+  void loadChiDataset(std::string pathPrefix, int stressorIndex){
     Image oceanData;
-    int data_W, data_H;
-
-    // Bring ocean data (image)
-    // 0. SST
-    std::cout << "Start loading CHI data " << std::endl;
-    std::cout << "Start loading 0. SST" << std::endl;
-    int stress = 0;
+    std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < years; d++) {
       ostringstream ostr;
-      ostr << "data/chi/sst/sst_05_" << d + 2003
-           << "_equi.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      std::strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][0].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+      ostr << pathPrefix << d + 2003 << "_equi.png"; 
+      // char *filename = new char[ostr.str().length() + 1];
+      // std::strcpy(filename, ostr.str().c_str());
+      oceanData = Image(ostr.str());
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60,
-                             0.6 + atan(pixel.r / 300));
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      pic[d][stress].update();
-    }
+      pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
+      pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+      pic[d][stressorIndex].wrap(Texture::REPEAT);
+      pic[d][stressorIndex].filter(Texture::LINEAR);
+      loaded[d][stressorIndex] = true;
+    }   
   }
 
   void loadChiData() {
-    Image oceanData;
-    int data_W, data_H;
-
-    // Bring ocean data (image)
     // 0. SST
-    std::cout << "Start loading CHI data " << std::endl;
-    std::cout << "Start loading 0. SST" << std::endl;
-    int stress = 0;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/sst/sst_05_" << d + 2003
-           << "_equi.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      std::strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][0].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/sst/sst_05_", 0);
+    // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60,
-                             0.6 + atan(pixel.r / 300));
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 1. Nutrients
-    stress = 1;
-    std::cout << "Start loading 1. Nutrients" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/nutrient/nutrient_pollution_impact_5_" << d + 2003
-           << "_equi.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/nutrient/nutrient_pollution_impact_5_", 1);
+    // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90,
-                             0.9 + pixel.r / 90);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 2. Shipping
-    stress = 2;
-    std::cout << "Start loading 2. Shipping" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/ship/ship_impact_10_" << d + 2003
-           << "_equi.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/ship/ship_impact_10_", 2);
+    // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100,
-                             0.6 + pixel.r / 60);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 3. Ocean Acidification
-    stress = 3;
-    std::cout << "Start loading 3. Ocean Acidification " << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/oa/oa_10_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/oa/oa_10_", 3);
+    // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1),
-                             0.5 + log(pixel.r / 100. + 1), 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 4. Sea level rise
-    stress = 4;
-    std::cout << "Start loading 4. Sea level rise" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/slr/slr_impact_5_" << d + 2003
-           << "_equi.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/slr/slr_impact_5_", 4);
+    // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color =
-                HSV(0.6 + 0.2 * log(pixel.r / 100. + 1),
-                    0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 5. Fishing demersal low
-    stress = 5;
-    std::cout << "Start loading 5. Fishing demersal low " << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/fish/fdl_10_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/fish/fdl_10_", 5);
+    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 6. Fishing demersal high
-    stress = 6;
-    std::cout << "Start loading 6. Fishing demersal high " << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/fish/fdh_10_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/fish/fdh_10_", 6);
+    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 7. Fishing pelagic low
-    stress = 7;
-    std::cout << "Start loading 7. Fishing pelagic low" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/fish/fpl_10_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/fish/fpl_10_", 7);
+    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 8. Fishing pelagic high
-    stress = 8;
-    std::cout << "Start loading 8. Fishing pelagic high" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/fish/fph_100_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/fish/fph_100_", 8);
+    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 9. Direct human
-    stress = 9;
-    std::cout << "Start loading 9. Direct human" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/dh/dh_10_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/dh/dh_10_", 9);
+    // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 10. Organic chemical
-    stress = 10;
-    std::cout << "Start loading 10. Organic chemical" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/oc/oc_10_" << d + 2003
-           << "_impact.png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/oc/oc_10_", 10);
+    // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
     // 11. Cumulative human impacts
-    stress = 11;
-    std::cout << "Start loading 11. Cumulative human impacts" << std::endl;
-    for (int d = 0; d < years; d++) {
-      ostringstream ostr;
-      ostr << "data/chi/chi/cumulative_impact_10_" << d + 2003
-           << ".png"; // ** change stressor
-      char *filename = new char[ostr.str().length() + 1];
-      strcpy(filename, ostr.str().c_str());
-      oceanData = Image(filename);
-      pic[d][stress].primitive(Mesh::POINTS);
-      data_W = oceanData.width();
-      data_H = oceanData.height();
-      point_dist = 2.002 + 0.001 * stress;
-      for (int row = 0; row < data_H; row++) {
-        float theta = row * M_PI / data_H;
-        float sinTheta = sin(theta);
-        float cosTheta = cos(theta);
-        for (int column = 0; column < data_W; column++) {
-          auto pixel = oceanData.at(column, data_H - row - 1);
-          if (pixel.r > 0) {
-            // {
-            float phi = column * M_2PI / data_W;
-            float sinPhi = sin(phi);
-            float cosPhi = cos(phi);
+    loadChiDataset("data/chi/chi/cumulative_impact_10_", 11);
+    // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
-            float x = sinPhi * sinTheta;
-            float y = -cosTheta;
-            float z = cosPhi * sinTheta;
-            // TODO: This can be preprocessed for shorting the load time - ML
-            pic[d][stress].vertex(x * point_dist, y * point_dist,
-                                  z * point_dist);
-            // init color config
-            data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
-            pic[d][stress].color(data_color);
-          }
-        }
-      }
-      // pic[d][stress].update();
-      loaded[d][stress] = true;
-    }
-    std::cout << "Loaded CHI data. Preprocessed" << std::endl;
+    std::cout << "Loaded CHI data." << std::endl;
   }
 
+  
 
 };
 

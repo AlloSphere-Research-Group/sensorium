@@ -26,8 +26,21 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   PresetSequencer sequencer;
   SequenceRecorder recorder;
 
+  SearchPaths searchPaths;
+  struct WatchedFile {
+    File file;
+    al_sec modified;
+  };
+  std::map<std::string, WatchedFile> watchedFiles;
+  al_sec watchCheckTime;
+
 
   void onInit() override {
+
+    searchPaths.addSearchPath(".", false);
+    searchPaths.addAppPaths();
+    searchPaths.addRelativePath("src/shaders", true);
+
     cuttleboneDomain = CuttleboneDomain<State>::enableCuttlebone(this);
     if (!cuttleboneDomain) {
       std::cerr << "ERROR: Could not start Cuttlebone" << std::endl;
@@ -51,10 +64,15 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   }
 
+  void reloadShaders() { 
+    loadShader(oceanDataViewer.shaderDataset, "tex.vert", "colormap.frag");
+  }
+
+
   void onCreate() override {
 
     lens().fovy(45).eyeSep(0);
-    nav().pos(0, 0, -30);
+    nav().pos(0, 0, -15);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
     navControl().vscale(0.125*0.1*0.5);
@@ -62,10 +80,10 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
     oceanDataViewer.onCreate();
 
-    std::thread thread([&] {
-      oceanDataViewer.loadChiData();
-    });
-    thread.detach(); 
+    // std::thread thread([&] {
+    oceanDataViewer.loadChiData();
+    // });
+    // thread.detach(); 
 
     videoPlayer.onCreate(state(), isPrimary());
 
@@ -96,9 +114,17 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     });
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
+
+    reloadShaders();
   }
 
   void onAnimate(double dt) override {
+
+    if (watchCheck()) {
+      printf("files changed!\n");
+      reloadShaders();
+    }
+
     oceanDataViewer.camPose.setNoCalls(nav());
     oceanDataViewer.onAnimate(dt, nav(), state(), isPrimary());
     videoPlayer.onAnimate(dt, state(), isPrimary());
@@ -188,6 +214,59 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   // void onMessage(osc::Message& m) override {
   // }
+
+
+
+  //// shader utils
+  void watchFile(std::string path) {
+    File file(searchPaths.find(path).filepath());
+    watchedFiles[path] = WatchedFile{file, file.modified()};
+  }
+
+  bool watchCheck() {
+    bool changed = false;
+    if (floor(al_system_time()) > watchCheckTime) {
+      watchCheckTime = floor(al_system_time());
+      for (std::map<std::string, WatchedFile>::iterator i =
+               watchedFiles.begin();
+           i != watchedFiles.end(); i++) {
+        WatchedFile &watchedFile = (*i).second;
+        if (watchedFile.modified != watchedFile.file.modified()) {
+          watchedFile.modified = watchedFile.file.modified();
+          changed = true;
+        }
+      }
+    }
+    return changed;
+  }
+
+  // read in a .glsl file
+  // add it to the watch list of files
+  // replace shader #include directives with corresponding file code
+  std::string loadGlsl(std::string filename) {
+    watchFile(filename);
+    std::string code = File::read(searchPaths.find(filename).filepath());
+    size_t from = code.find("#include \"");
+    if (from != std::string::npos) {
+      size_t capture = from + strlen("#include \"");
+      size_t to = code.find("\"", capture);
+      std::string include_filename = code.substr(capture, to - capture);
+      std::string replacement =
+          File::read(searchPaths.find(include_filename).filepath());
+      code = code.replace(from, to - from + 2, replacement);
+      // printf("code: %s\n", code.data());
+    }
+    return code;
+  }
+
+  void loadShader(ShaderProgram &program, std::string vp_filename,
+                  std::string fp_filename) {
+    std::string vp = loadGlsl(vp_filename);
+    std::string fp = loadGlsl(fp_filename);
+    program.compile(vp, fp);
+  }
+
+
 };
 
 int main() {
