@@ -229,7 +229,7 @@ struct OceanDataViewer {
   ParameterVec3 llr{"llr", ""};
   ParameterPose camPose{"camPose", ""};
   Parameter lux{"Light", 0.6, 0, 2.5};
-  Parameter year{"Year", 2003, 2003, 2013};
+  Parameter year{"Year", 2013, 2013, 2023};
   // Parameter trans{"Trans", 0.99, 0.1, 1};
   Parameter gain{"Audio", 0, 0, 2};
   ParameterBool s_ci{"Cumulative_impacts", "", 0.0};
@@ -621,27 +621,9 @@ struct OceanDataViewer {
 
         // shaderDataset.uniform("mapFunction", j);
 
-        pic[(int)state.year - 2003][j].bind();
+        pic[(int)state.year - 2013][j].bind();
         // g.cullFaceFront();
         g.draw(sphereMesh); // only needed if we go inside the earth
-        // g.cullFaceBack();
-        // g.draw(sphereMesh);
-        // g.meshColor();
-        // g.blendTrans();
-        // g.pushMatrix();
-        // float ps = 50 / nav.pos().magSqr();
-        // if (ps > 7) {
-        //   ps = 7;
-        // }
-        // g.pointSize(ps);
-        // Update data pose when nav is inside of the globe
-        // if (state.radius < 2) {
-        //   g.scale(0.95);
-        // } else {
-        //   g.scale(1.0005);
-        // }
-        // g.draw(pic[(int)state.year - 2003][j]);
-        // g.popMatrix();
       }
     }
     // draw cloud
@@ -649,20 +631,7 @@ struct OceanDataViewer {
       if (state.cloud_swtch[j]) {
         // g.clearDepth();
         cloud[j].bind();
-        // g.cullFaceFront();
         g.draw(sphereMesh);
-        // g.cullFaceBack();
-        // g.draw(sphereMesh);
-        // g.meshColor();
-        // // g.blendTrans();
-        // g.pushMatrix();
-        // float ps = 100 / nav.pos().magSqr();
-        // if (ps > 7) {
-        //   ps = 7;
-        // }
-        // g.pointSize(0.4);
-        // g.draw(cloud[j]); // only needed if we go inside the earth
-        // g.popMatrix();
       }
     }
     // Draw CO2
@@ -736,7 +705,7 @@ struct OceanDataViewer {
 
   void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, SequenceRecorder &rec, Nav &nav, State &state) {
     std::string displayText =
-        "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)";
+        "AlloOcean. Ocean stressor (2012-2023)";
     *gui << lat << lon << radius; // << lux << year << gain;
     *gui << year;
     *gui << s_years;
@@ -823,7 +792,7 @@ struct OceanDataViewer {
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < years; d++) {
       ostringstream ostr;
-      ostr << pathPrefix << d + 2003 << "_equi.png"; 
+      ostr << pathPrefix << d + 2012 << ".png"; 
       // char *filename = new char[ostr.str().length() + 1];
       // std::strcpy(filename, ostr.str().c_str());
       oceanData = Image(ostr.str());
@@ -838,52 +807,13 @@ struct OceanDataViewer {
 
   void loadChiData() {
     // 0. SST
-    loadChiDataset("data/chi/sst/sst_05_", 0);
+    loadChiDataset("data/nasa/sst/", 0);
     // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
 
     // 1. Nutrients
-    loadChiDataset("data/chi/nutrient/nutrient_pollution_impact_5_", 1);
+    loadChiDataset("data/nasa/carbon/", 1);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
-    // 2. Shipping
-    loadChiDataset("data/chi/ship/ship_impact_10_", 2);
-    // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60);
-
-    // 3. Ocean Acidification
-    loadChiDataset("data/chi/oa/oa_10_", 3);
-    // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1);
-
-    // 4. Sea level rise
-    loadChiDataset("data/chi/slr/slr_impact_5_", 4);
-    // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
-
-    // 5. Fishing demersal low
-    loadChiDataset("data/chi/fish/fdl_10_", 5);
-    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-
-    // 6. Fishing demersal high
-    loadChiDataset("data/chi/fish/fdh_10_", 6);
-    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-
-    // 7. Fishing pelagic low
-    loadChiDataset("data/chi/fish/fpl_10_", 7);
-    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-
-    // 8. Fishing pelagic high
-    loadChiDataset("data/chi/fish/fph_100_", 8);
-    // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-
-    // 9. Direct human
-    loadChiDataset("data/chi/dh/dh_10_", 9);
-    // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
-
-    // 10. Organic chemical
-    loadChiDataset("data/chi/oc/oc_10_", 10);
-    // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
-
-    // 11. Cumulative human impacts
-    loadChiDataset("data/chi/chi/cumulative_impact_10_", 11);
-    // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
     std::cout << "Loaded CHI data." << std::endl;
   }
