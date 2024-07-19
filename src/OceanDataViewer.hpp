@@ -232,22 +232,13 @@ struct OceanDataViewer {
   Parameter year{"Year", 2013, 2013, 2023};
   // Parameter trans{"Trans", 0.99, 0.1, 1};
   Parameter gain{"Audio", 0, 0, 2};
-  ParameterBool s_ci{"Cumulative_impacts", "", 0.0};
-  ParameterBool s_oc{"Organic_chemical_pollution", "", 0.0};
-  ParameterBool s_np{"Nutrient_pollution", "", 0.0};
-  ParameterBool s_dh{"Direct_human", "", 0.0};
+  ParameterBool s_carbon{"Ocean_Carbon", "", 0.0};
   ParameterBool s_slr{"Sea_level_rise", "", 0.0};
   ParameterBool s_oa{"Ocean_acidification", "", 0.0};
   ParameterBool s_sst{"Sea_surface_temperature", "", 0.0};
-  ParameterBool s_cf_pl{"Fishing_Pelagic_low-bycatch", "", 0.0};
-  ParameterBool s_cf_ph{"Fishing_Pelagic_high-bycatch", "", 0.0};
-  ParameterBool s_cf_dl{"Fishing_Demersal_non-destructive_high-bycatch", "",
-                        0.0};
-  ParameterBool s_cf_dh{"Fishing_Demersal_non-desctructive_low-bycatch", "",
-                        0.0};
-  ParameterBool s_cf_dd{"Fishing_Demersal_destructive", "", 0.0};
-  ParameterBool a_f{"Artisanal_fishing", "", 0.0};
-  ParameterBool s_shp{"Shipping", "", 0.0};
+  ParameterBool s_fish{"Over-fishing", "", 0.0};
+  ParameterBool s_plastics{"Plastics", "", 0.0};
+  ParameterBool s_resiliency{"Resiliency_Map", "", 0.0};
   ParameterBool s_cloud{"Clouds", "", 0.0};
   ParameterBool s_cloud_storm{"Clouds_Storm", "", 0.0};
   ParameterBool s_cloud_eu{"Clouds_EU", "", 0.0};
@@ -530,22 +521,18 @@ struct OceanDataViewer {
       mFilter.type(gam::LOW_PASS);
       reverb.decay(0.6f + 0.3 / (radius + 1)); // Tail decay factor, in [0,1]
 
+
       // Assign shared states for renderers
       state.global_pose.set(nav);
       state.year = year;
       state.radius = radius;
       state.swtch[0] = s_sst;
-      state.swtch[1] = s_np;
-      state.swtch[2] = s_shp;
+      state.swtch[1] = s_carbon;
+      state.swtch[2] = s_fish;
       state.swtch[3] = s_oa;
       state.swtch[4] = s_slr;
-      state.swtch[5] = s_cf_dl;
-      state.swtch[6] = s_cf_dh;
-      state.swtch[7] = s_cf_pl;
-      state.swtch[8] = s_cf_ph;
-      state.swtch[9] = s_dh;
-      state.swtch[10] = s_oc;
-      state.swtch[11] = s_ci;
+      state.swtch[5] = s_plastics;
+      state.swtch[6] = s_resiliency;
       state.cloud_swtch[0] = s_cloud;
       state.cloud_swtch[1] = s_cloud_eu;
       state.cloud_swtch[2] = s_cloud_storm;
@@ -612,8 +599,8 @@ struct OceanDataViewer {
     // g.blendTrans();
     g.blendAdd();
 
-    g.shader(shaderDataset);
-    shaderDataset.uniform("tex0", 0);
+    // g.shader(shaderDataset);
+    // shaderDataset.uniform("tex0", 0);
 
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
@@ -710,28 +697,29 @@ struct OceanDataViewer {
     *gui << year;
     *gui << s_years;
     *gui << s_nav << faceTo << animateCam;
-    *gui << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
-    *gui << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    *gui << s_carbon << s_slr << s_oa << s_sst;
+    *gui << s_fish << s_plastics << s_resiliency;
     *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
     // *gui << s_cf_dd << a_f // currently we don't have this data
-    // *gui << s_ci << s_oc << s_np;
+    // *gui << s_ci << s_oc << s_carbon;
 
     // *gui << lat << lon << radius << lux << year << trans << gain;
 
+  
     presets << year << camPose;
     presets << s_years << s_nav;
-    presets << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
-    presets << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    presets << s_carbon << s_slr << s_oa << s_sst;
+    presets << s_fish << s_plastics << s_resiliency;
     presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
     seq << llr << s_years << s_nav << camPose << faceTo;
-    seq << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
-    seq << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
+    seq << s_carbon << s_slr << s_oa << s_sst;
+    seq << s_fish << s_plastics << s_resiliency;
     seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
     // rec << year;
     // rec << s_years << s_nav;
-    // rec << s_ci << s_oc << s_np << s_dh << s_slr << s_oa << s_sst;
+    // rec << s_ci << s_oc << s_carbon << s_dh << s_slr << s_oa << s_sst;
     // rec << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
     // rec << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
@@ -795,11 +783,13 @@ struct OceanDataViewer {
       ostr << pathPrefix << d + 2012 << ".png"; 
       // char *filename = new char[ostr.str().length() + 1];
       // std::strcpy(filename, ostr.str().c_str());
+      // read data with the ostr string name
       oceanData = Image(ostr.str());
 
       pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
+      // pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
       pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
-      pic[d][stressorIndex].wrap(Texture::REPEAT);
+      pic[d][stressorIndex].wrap(Texture::REPEAT); 
       pic[d][stressorIndex].filter(Texture::LINEAR);
       loaded[d][stressorIndex] = true;
     }   
