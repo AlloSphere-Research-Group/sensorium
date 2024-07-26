@@ -234,6 +234,8 @@ struct OceanDataViewer {
   Parameter gain{"Audio", 0, 0, 2};
   ParameterBool s_carbon{"Ocean_Carbon", "", 0.0};
   ParameterBool s_slr{"Sea_level_rise", "", 0.0};
+  ParameterBool s_chl{"Chlorophyll_Concentration", "", 0.0};
+  ParameterBool s_flh{"Fluorescence_Line_Height", "", 0.0};
   ParameterBool s_oa{"Ocean_acidification", "", 0.0};
   ParameterBool s_sst{"Sea_surface_temperature", "", 0.0};
   ParameterBool s_fish{"Over-fishing", "", 0.0};
@@ -244,7 +246,7 @@ struct OceanDataViewer {
   ParameterBool s_cloud_eu{"Clouds_EU", "", 0.0};
   ParameterBool s_co2{"CO2", "", 0.0};
   ParameterBool s_nav{"Explore_Globe", "", 0.0};
-  ParameterBool s_years{"2003_2013", "", 0.0};
+  ParameterBool s_years{"2012_2023", "", 0.0};
 
   ParameterBool animateCam{"animateCam", "", 0.0};
   ParameterBool faceTo{"Face_Center", "", 1.0};
@@ -528,11 +530,13 @@ struct OceanDataViewer {
       state.radius = radius;
       state.swtch[0] = s_sst;
       state.swtch[1] = s_carbon;
-      state.swtch[2] = s_fish;
-      state.swtch[3] = s_oa;
-      state.swtch[4] = s_slr;
-      state.swtch[5] = s_plastics;
-      state.swtch[6] = s_resiliency;
+      state.swtch[2] = s_chl;
+      state.swtch[3] = s_flh;
+      state.swtch[4] = s_fish;
+      state.swtch[5] = s_oa;
+      state.swtch[6] = s_plastics;
+      state.swtch[7] = s_resiliency;
+      state.swtch[8] = s_slr;
       state.cloud_swtch[0] = s_cloud;
       state.cloud_swtch[1] = s_cloud_eu;
       state.cloud_swtch[2] = s_cloud_storm;
@@ -629,7 +633,7 @@ struct OceanDataViewer {
       g.blending(true);
       g.depthTesting(true);
       for (int nation = 0; nation < num_county; nation++) {
-        float co2 = co2_level[nation][(int)state.year - 2003] *
+        float co2 = co2_level[nation][(int)state.year - 2013] *
                     0.000001; // precompute micro quantity since large
         g.pushMatrix();
         g.translate(co2_pos[nation] * 2.01);
@@ -697,7 +701,7 @@ struct OceanDataViewer {
     *gui << year;
     *gui << s_years;
     *gui << s_nav << faceTo << animateCam;
-    *gui << s_carbon << s_slr << s_oa << s_sst;
+    *gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
     *gui << s_fish << s_plastics << s_resiliency;
     *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
     // *gui << s_cf_dd << a_f // currently we don't have this data
@@ -708,12 +712,12 @@ struct OceanDataViewer {
   
     presets << year << camPose;
     presets << s_years << s_nav;
-    presets << s_carbon << s_slr << s_oa << s_sst;
+    presets << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
     presets << s_fish << s_plastics << s_resiliency;
     presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
     seq << llr << s_years << s_nav << camPose << faceTo;
-    seq << s_carbon << s_slr << s_oa << s_sst;
+    seq << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
     seq << s_fish << s_plastics << s_resiliency;
     seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
@@ -766,7 +770,7 @@ struct OceanDataViewer {
     s_years.registerChangeCallback([&](int value) {
       if (value) {
         state.molph = true; //!state.molph;
-        year = 2003;
+        year = 2012;
         // s_years.set(0);
       } else { 
         state.molph = false;
@@ -800,10 +804,17 @@ struct OceanDataViewer {
     loadChiDataset("data/nasa/sst/", 0);
     // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
 
-    // 1. Nutrients
+    // 1. Carbon
     loadChiDataset("data/nasa/carbon/", 1);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
+    // 2. Chlorophyll
+    loadChiDataset("data/nasa/chl/", 2);
+    // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
+
+    // 3. Fluroscene Line Height
+    loadChiDataset("data/nasa/flh/", 3);
+    // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
     std::cout << "Loaded CHI data." << std::endl;
   }
