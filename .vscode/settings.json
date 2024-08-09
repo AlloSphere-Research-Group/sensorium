@@ -2,6 +2,16 @@
     "files.associations": {
         "chrono": "cpp",
         "bitset": "cpp",
-        "random": "cpp"
+        "random": "cpp",
+        "iosfwd": "cpp",
+        "ostream": "cpp",
+        "*.tcc": "cpp",
+        "optional": "cpp",
+        "fstream": "cpp",
+        "future": "cpp",
+        "istream": "cpp",
+        "sstream": "cpp",
+        "streambuf": "cpp",
+        "regex": "cpp"
     }
 }

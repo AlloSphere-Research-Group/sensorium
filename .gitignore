@@ -5,6 +5,8 @@
 # while not ignoring things inside bin/data
 !**/bin/data
 
+**/frames/*
+
 # anything named build
 build
 
