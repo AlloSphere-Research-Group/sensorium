@@ -54,8 +54,12 @@ struct VideoPlayer {
 
   const std::string pano_frag = R"(
   #version 330
-  uniform sampler2D tex0;
-  uniform sampler2D tex1;
+  uniform sampler2D tex0Y;
+  uniform sampler2D tex0U;
+  uniform sampler2D tex0V;
+  uniform sampler2D tex1Y;
+  uniform sampler2D tex1U;
+  uniform sampler2D tex1V;
   uniform float blend0;
   uniform float blend1;
   uniform float brightness;
@@ -65,8 +69,30 @@ struct VideoPlayer {
 
   // can apply filters here
   void main() {
-    vec4 c0 = blend0 * texture(tex0, texcoord_);
-    vec4 c1 = blend1 * texture(tex1, texcoord_);
+    vec3 yuv0;
+    yuv0.r = texture(tex0Y, texcoord_).r - 0.0625;
+    yuv0.g = texture(tex0U, texcoord_).r - 0.5;
+    yuv0.b = texture(tex0V, texcoord_).r - 0.5;
+
+    vec4 rgba0;
+    rgba0.r = yuv0.r + 1.596 * yuv0.b;
+    rgba0.g = yuv0.r - 0.813 * yuv0.b - 0.391 * yuv0.g;
+    rgba0.b = yuv0.r + 2.018 * yuv0.g;
+    rgba0.a = 1.0;
+    
+    vec3 yuv1;
+    yuv1.r = texture(tex1Y, texcoord_).r - 0.0625;
+    yuv1.g = texture(tex1U, texcoord_).r - 0.5;
+    yuv1.b = texture(tex1V, texcoord_).r - 0.5;
+
+    vec4 rgba1;
+    rgba1.r = yuv1.r + 1.596 * yuv1.b;
+    rgba1.g = yuv1.r - 0.813 * yuv1.b - 0.391 * yuv1.g;
+    rgba1.b = yuv1.r + 2.018 * yuv1.g;
+    rgba1.a = 1.0;
+
+    vec4 c0 = blend0 * rgba0;
+    vec4 c1 = blend1 * rgba1;
     frag_color = brightness * (c0 + c1);
   }
   )";
@@ -121,12 +147,14 @@ struct VideoPlayer {
 
   ShaderProgram pano_shader;
 
-  Texture tex0, tex1;
+  Texture tex0Y, tex0U, tex0V;
+  Texture tex1Y, tex1U, tex1V;
   VAOMesh quad, sphere;
 
   VideoDecoder *videoDecoder{NULL};
   VideoDecoder *videoDecoderNext{NULL};
-  bool loadVideo, doSwapVideo;
+  bool loadVideo{false};
+  bool doSwapVideo{false};
 
   std::string dataPath;
 
@@ -208,7 +236,8 @@ struct VideoPlayer {
       playingVideo.set(1.0);
     });
     playWater.registerChangeCallback([&](float value) {
-      videoToLoad.set("out3r2x.mp4");
+      // videoToLoad.set("out3r2x.mp4");
+      videoToLoad.set("Iron_Man-Trailer_HD.mp4");
       playingVideo.set(1.0);
     });
   }
@@ -230,8 +259,14 @@ struct VideoPlayer {
 
     videoDecoderNext->start();
 
-    tex1.create2D(videoDecoderNext->width(), videoDecoderNext->height(),
-                  Texture::RGBA8, Texture::RGBA, Texture::UBYTE);
+    tex1Y.create2D(videoDecoderNext->lineSize()[0], videoDecoderNext->height(),
+                   Texture::RED, Texture::RED, Texture::UBYTE);
+    tex1U.create2D(videoDecoderNext->lineSize()[1],
+                   videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
+                   Texture::UBYTE);
+    tex1V.create2D(videoDecoderNext->lineSize()[2],
+                   videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
+                   Texture::UBYTE);
 
     if (isPrimary)
       state.global_clock_next = 0.0;
@@ -247,8 +282,15 @@ struct VideoPlayer {
       videoDecoder = NULL;
     }
     if (videoDecoderNext != NULL) {
-      tex0.create2D(videoDecoderNext->width(), videoDecoderNext->height(),
-                    Texture::RGBA8, Texture::RGBA, Texture::UBYTE);
+      tex0Y.create2D(videoDecoderNext->lineSize()[0],
+                     videoDecoderNext->height(), Texture::RED, Texture::RED,
+                     Texture::UBYTE);
+      tex0U.create2D(videoDecoderNext->lineSize()[1],
+                     videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
+                     Texture::UBYTE);
+      tex0V.create2D(videoDecoderNext->lineSize()[2],
+                     videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
+                     Texture::UBYTE);
 
       videoDecoder = videoDecoderNext;
       videoDecoderNext = NULL;
@@ -274,18 +316,30 @@ struct VideoPlayer {
     // compile & initialize shader
     pano_shader.compile(pano_vert, pano_frag);
     pano_shader.begin();
-    pano_shader.uniform("tex0", 0);
-    pano_shader.uniform("tex1", 1);
+    pano_shader.uniform("tex0Y", 0);
+    pano_shader.uniform("tex0U", 1);
+    pano_shader.uniform("tex0V", 2);
+    pano_shader.uniform("tex1Y", 3);
+    pano_shader.uniform("tex1U", 4);
+    pano_shader.uniform("tex1V", 5);
     pano_shader.uniform("blend0", 1.0);
     pano_shader.uniform("blend1", 1.0);
     pano_shader.uniform("brightness", 1.0);
     pano_shader.end();
 
     // generate texture
-    tex0.filter(Texture::LINEAR);
-    tex0.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex1.filter(Texture::LINEAR);
-    tex1.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    tex0Y.filter(Texture::LINEAR);
+    tex0Y.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    tex0U.filter(Texture::LINEAR);
+    tex0U.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    tex0V.filter(Texture::LINEAR);
+    tex0V.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    tex1Y.filter(Texture::LINEAR);
+    tex1Y.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    tex1U.filter(Texture::LINEAR);
+    tex1U.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    tex1V.filter(Texture::LINEAR);
+    tex1V.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
 
     // generate mesh
     addTexRect(quad, -1, 1, 2, -2);
@@ -321,14 +375,18 @@ struct VideoPlayer {
       if (videoDecoder != NULL) {
         frame = videoDecoder->getVideoFrame(state.global_clock);
         if (frame) {
-          tex0.submit(frame->dataY.data());
+          tex0Y.submit(frame->dataY.data());
+          tex0U.submit(frame->dataU.data());
+          tex0V.submit(frame->dataV.data());
           videoDecoder->gotVideoFrame();
         }
       }
       if (videoDecoderNext != NULL) {
         frame = videoDecoderNext->getVideoFrame(state.global_clock_next);
         if (frame) {
-          tex1.submit(frame->dataY.data());
+          tex1Y.submit(frame->dataY.data());
+          tex1U.submit(frame->dataU.data());
+          tex1V.submit(frame->dataV.data());
           videoDecoderNext->gotVideoFrame();
         }
       }
@@ -350,14 +408,22 @@ struct VideoPlayer {
         g.shader().uniform("brightness", brightness);
         g.shader().uniform("blend0", blend0);
         g.shader().uniform("blend1", blend1);
-        tex0.bind(0);
-        tex1.bind(1);
+        tex0Y.bind(0);
+        tex0U.bind(1);
+        tex0V.bind(2);
+        tex1Y.bind(3);
+        tex1U.bind(4);
+        tex1V.bind(5);
         g.translate(renderPose.get().pos());
         g.rotate(renderPose.get().quat());
         g.scale(renderScale.get());
         g.draw(sphere);
-        tex0.unbind(0);
-        tex1.unbind(1);
+        tex0Y.unbind(0);
+        tex0U.unbind(1);
+        tex0V.unbind(2);
+        tex1Y.unbind(3);
+        tex1U.unbind(4);
+        tex1V.unbind(5);
 
         g.popMatrix();
       }
