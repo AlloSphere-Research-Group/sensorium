@@ -2,10 +2,9 @@
 #ifndef VIDEO_PLAYER_HPP
 #define VIDEO_PLAYER_HPP
 
-#include "al_ext/video/al_VideoDecoder.hpp"
-#include "al/sphere/al_SphereUtils.hpp"
 #include "al/sound/al_SpeakerAdjustment.hpp"
-
+#include "al/sphere/al_SphereUtils.hpp"
+#include "al_ext/video/al_VideoDecoder.hpp"
 
 namespace al {
 
@@ -72,7 +71,7 @@ struct VideoPlayer {
   }
   )";
 
-  int addSphereWithEquirectTex(Mesh &m, double radius, int bands){
+  int addSphereWithEquirectTex(Mesh &m, double radius, int bands) {
     m.primitive(Mesh::TRIANGLES);
 
     double &r = radius;
@@ -138,7 +137,7 @@ struct VideoPlayer {
   Parameter brightness{"brightness", "", 1.0, 0.0, 2.0};
   Parameter blend0{"blend0", "", 1.0, 0.0, 1.0};
   Parameter blend1{"blend1", "", 1.0, 0.0, 1.0};
-  
+
   Trigger playWater{"Play_Water", ""};
   Trigger playAerialImages{"Play_AerialImages", ""};
   Trigger playSF{"Play_SF", ""};
@@ -152,21 +151,25 @@ struct VideoPlayer {
   ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, 0))};
   ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
 
-
-  void registerParams(ControlGUI *gui, PresetHandler &presets, PresetSequencer &seq, SequenceRecorder &rec, State &state) {
+  void registerParams(ControlGUI *gui, PresetHandler &presets,
+                      PresetSequencer &seq, SequenceRecorder &rec,
+                      State &state) {
     *gui << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
     *gui << playWater << playAerialImages << playSF;
     *gui << playBoardwalk << playCoral;
     *gui << playOverfishing << playAcidification << playBoat << swapVideo;
     *gui << renderPose << renderScale;
-    
-    presets << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
+
+    presets << renderVideoInSim << playingVideo << brightness << blend0
+            << blend1;
     seq << videoToLoad << blend0 << blend1 << swapVideo << playingVideo;
-    seq << playBoardwalk << playCoral << playOverfishing << playAerialImages << playAcidification << playSF << playBoat << playWater; //<< renderPose << renderScale;
-    
+    seq << playBoardwalk << playCoral << playOverfishing << playAerialImages
+        << playAcidification << playSF << playBoat
+        << playWater; //<< renderPose << renderScale;
+
     // these change callbacks should run only on primary
     playingVideo.registerChangeCallback([&](float value) {
-      if(value == 1.0){
+      if (value == 1.0) {
         // state.global_clock = 0.0;
         // state.global_clock_next = 0.0;
         state.videoPlaying = true;
@@ -208,14 +211,12 @@ struct VideoPlayer {
       videoToLoad.set("out3r2x.mp4");
       playingVideo.set(1.0);
     });
-
   }
 
-
-  void loadVideoFile(State &state, bool isPrimary){
+  void loadVideoFile(State &state, bool isPrimary) {
     std::string path = dataPath + videoToLoad.get();
 
-    if(videoDecoderNext != NULL){
+    if (videoDecoderNext != NULL) {
       videoDecoderNext->stop();
       videoDecoderNext = NULL;
     }
@@ -229,35 +230,37 @@ struct VideoPlayer {
 
     videoDecoderNext->start();
 
-    tex1.create2D(videoDecoderNext->width(), videoDecoderNext->height(), Texture::RGBA8,
-            Texture::RGBA, Texture::UBYTE);
+    tex1.create2D(videoDecoderNext->width(), videoDecoderNext->height(),
+                  Texture::RGBA8, Texture::RGBA, Texture::UBYTE);
 
-    if(isPrimary) state.global_clock_next = 0.0;
+    if (isPrimary)
+      state.global_clock_next = 0.0;
   };
 
   // void playVideo(){
   //   videoDecoderNext->start();
   // }
 
-  void swapNextVideo(State &state, bool isPrimary){
-    if(videoDecoder != NULL){
+  void swapNextVideo(State &state, bool isPrimary) {
+    if (videoDecoder != NULL) {
       videoDecoder->stop();
       videoDecoder = NULL;
     }
-    if(videoDecoderNext != NULL){
-      tex0.create2D(videoDecoderNext->width(), videoDecoderNext->height(), Texture::RGBA8,
-              Texture::RGBA, Texture::UBYTE);
+    if (videoDecoderNext != NULL) {
+      tex0.create2D(videoDecoderNext->width(), videoDecoderNext->height(),
+                    Texture::RGBA8, Texture::RGBA, Texture::UBYTE);
 
       videoDecoder = videoDecoderNext;
       videoDecoderNext = NULL;
-      if(isPrimary) state.global_clock = state.global_clock_next;
+      if (isPrimary)
+        state.global_clock = state.global_clock_next;
     }
     doSwapVideo = false;
   }
 
-  void onInit(){}
+  void onInit() {}
 
-  void onCreate(State &state, bool isPrimary){
+  void onCreate(State &state, bool isPrimary) {
     if (sphere::isSphereMachine()) {
       if (sphere::isRendererMachine()) {
         dataPath = "/data/Sensorium/video/";
@@ -296,13 +299,14 @@ struct VideoPlayer {
       state.global_clock_next = 0;
       state.videoPlaying = false;
     }
-
   }
 
-  void onAnimate(al_sec dt, State &state, bool isPrimary){
+  void onAnimate(al_sec dt, State &state, bool isPrimary) {
 
-    if(loadVideo) loadVideoFile(state, isPrimary);
-    if(doSwapVideo) swapNextVideo(state, isPrimary);
+    if (loadVideo)
+      loadVideoFile(state, isPrimary);
+    if (doSwapVideo)
+      swapNextVideo(state, isPrimary);
 
     if (isPrimary) {
 
@@ -310,30 +314,28 @@ struct VideoPlayer {
         state.global_clock += dt;
         state.global_clock_next += dt;
       }
-
-
     }
 
-    if (state.videoPlaying){
-      uint8_t *frame;
-      if(videoDecoder != NULL){
+    if (state.videoPlaying) {
+      MediaFrame *frame;
+      if (videoDecoder != NULL) {
         frame = videoDecoder->getVideoFrame(state.global_clock);
         if (frame) {
-          tex0.submit(frame);
+          tex0.submit(frame->dataY.data());
           videoDecoder->gotVideoFrame();
         }
       }
-      if(videoDecoderNext != NULL){
+      if (videoDecoderNext != NULL) {
         frame = videoDecoderNext->getVideoFrame(state.global_clock_next);
         if (frame) {
-          tex1.submit(frame);
+          tex1.submit(frame->dataY.data());
           videoDecoderNext->gotVideoFrame();
         }
       }
     }
   }
 
-  void onDraw(Graphics &g, Nav& nav, State &state, bool isPrimary){
+  void onDraw(Graphics &g, Nav &nav, State &state, bool isPrimary) {
 
     if (state.videoPlaying) {
       // nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
@@ -356,16 +358,13 @@ struct VideoPlayer {
         g.draw(sphere);
         tex0.unbind(0);
         tex1.unbind(1);
-        
+
         g.popMatrix();
       }
     }
   }
-  
-  
 };
 
 } // namespace al
-
 
 #endif
