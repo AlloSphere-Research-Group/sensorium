@@ -79,7 +79,7 @@ struct VideoPlayer {
     rgba0.g = yuv0.r - 0.813 * yuv0.b - 0.391 * yuv0.g;
     rgba0.b = yuv0.r + 2.018 * yuv0.g;
     rgba0.a = 1.0;
-    
+
     vec3 yuv1;
     yuv1.r = texture(tex1Y, texcoord_).r - 0.0625;
     yuv1.g = texture(tex1U, texcoord_).r - 0.5;
@@ -236,8 +236,8 @@ struct VideoPlayer {
       playingVideo.set(1.0);
     });
     playWater.registerChangeCallback([&](float value) {
-      // videoToLoad.set("out3r2x.mp4");
-      videoToLoad.set("Iron_Man-Trailer_HD.mp4");
+      videoToLoad.set("out3r2x.mp4");
+      // videoToLoad.set("Iron_Man-Trailer_HD.mp4");
       playingVideo.set(1.0);
     });
   }
