@@ -2,7 +2,7 @@
 #ifndef APPSTATE_HPP
 #define APPSTATE_HPP
 
-static const int years = 12;       // Total number of years (2012~2023)
+static const int years = 11;       // Total number of years (2003~2013)
 static const int stressors = 12;   // Total number of stressors
 static const int num_cloud = 3;    // Total number of stressors
 static const int num_county = 187; // Total number of stressors
