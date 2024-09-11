@@ -450,12 +450,12 @@ struct OceanDataViewer {
     presets << year << camPose << blend;
     presets << s_years << s_nav;
     presets << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
-    presets << s_fish << s_plastics << s_resiliency;
+    presets << s_fish << s_shp << s_plastics << s_resiliency;
     presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid
             << lux;
 
     seq << llr << s_years << s_nav << camPose << faceTo << blend;
-    seq << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
+    seq << s_carbon << s_slr << s_shp << s_chl << s_flh << s_oa << s_sst;
     seq << s_fish << s_plastics << s_resiliency;
     seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
 
