@@ -11,8 +11,10 @@ static const int frames = 400;     // Total number of CO2 frames
 struct State {
   // video player
   bool videoPlaying;
+  // bool co2Playing;
   double global_clock;
   double global_clock_next;
+  double co2_clock;
 
   // ocean data viewer
   al::Pose global_pose;
@@ -21,7 +23,7 @@ struct State {
   bool molph{false};
   bool molphFrame{false};
   bool co2_swtch{false};
-  bool co2_frameSwtch{false};
+  bool co2Playing{false};
   float lux;
   float year;
   float radius;

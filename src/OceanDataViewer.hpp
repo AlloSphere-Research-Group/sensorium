@@ -17,6 +17,9 @@
 #include "al/io/al_CSVReader.hpp"
 #include "al/math/al_Random.hpp"
 
+#include "al_ext/video/al_VideoDecoder.hpp"
+
+
 namespace al {
 struct OceanDataViewer {
 
@@ -254,6 +257,10 @@ struct OceanDataViewer {
   ParameterBool animateCam{"animateCam", "", 0.0};
   ParameterBool faceTo{"Face_Center", "", 1.0};
 
+  // video textures
+  Texture tex0Y, tex0U, tex0V;
+  VideoDecoder *videoDecoder{NULL};
+
 
   // bool faceTo = true;
   // bool animateCam = false;
@@ -339,48 +346,48 @@ struct OceanDataViewer {
   void onInit() {
     // Import CO2 data
     // CSV columms label: lat + long + years (2003~2013)
-    for (int k = 0; k < years + 2; k++) {
-      reader.addType(CSVReader::REAL);
-    }
-    reader.readFile("data/co2/1990_2020.csv");
-    std::vector<CO2Types> co2_rows = reader.copyToStruct<CO2Types>();
-    // to test the csv import . values supposed to be: co2_row.val[-]: first two
-    // column (lat, long) + years data year data : co2_row.val[2 ~ :] for (auto
-    // co2_row : co2_rows) {
-    //   cout << co2_row.val[0] << endl;
+    // for (int k = 0; k < years + 2; k++) {
+    //   reader.addType(CSVReader::REAL);
     // }
-    // convert co2 lat lon to xyz
-    int nation_id = 0;
-    for (auto co2_row : co2_rows) {
-      float lat = co2_row.val[0];
-      float lon = co2_row.val[1];
-      co2_pos[nation_id] =
-          Vec3f(-cos(lat / 180.0 * M_PI) * sin(lon / 180.0 * M_PI),
-                sin(lat / 180.0 * M_PI),
-                -cos(lat / 180.0 * M_PI) * cos(lon / 180.0 * M_PI));
-      for (int i = 0; i < years; i++) {
-        co2_level[nation_id][i] = co2_row.val[2 + i];
-      }
-      // addCube(co2_mesh[nation_id], false, 0.01);
-      // co2_mesh[nation_id].decompress();
-      // co2_mesh[nation_id].generateNormals();
-      // co2_mesh[nation_id].update();
-      nation_lat[nation_id] = lat;
-      nation_lon[nation_id] = lon;
-      nation_id++;
-    }
+    // reader.readFile("data/co2/1990_2020.csv");
+    // std::vector<CO2Types> co2_rows = reader.copyToStruct<CO2Types>();
+    // // to test the csv import . values supposed to be: co2_row.val[-]: first two
+    // // column (lat, long) + years data year data : co2_row.val[2 ~ :] for (auto
+    // // co2_row : co2_rows) {
+    // //   cout << co2_row.val[0] << endl;
+    // // }
+    // // convert co2 lat lon to xyz
+    // int nation_id = 0;
+    // for (auto co2_row : co2_rows) {
+    //   float lat = co2_row.val[0];
+    //   float lon = co2_row.val[1];
+    //   co2_pos[nation_id] =
+    //       Vec3f(-cos(lat / 180.0 * M_PI) * sin(lon / 180.0 * M_PI),
+    //             sin(lat / 180.0 * M_PI),
+    //             -cos(lat / 180.0 * M_PI) * cos(lon / 180.0 * M_PI));
+    //   for (int i = 0; i < years; i++) {
+    //     co2_level[nation_id][i] = co2_row.val[2 + i];
+    //   }
+    //   // addCube(co2_mesh[nation_id], false, 0.01);
+    //   // co2_mesh[nation_id].decompress();
+    //   // co2_mesh[nation_id].generateNormals();
+    //   // co2_mesh[nation_id].update();
+    //   nation_lat[nation_id] = lat;
+    //   nation_lon[nation_id] = lon;
+    //   nation_id++;
+    // }
 
-    // Import Cloud figures
-    Image cloudData;
-    int cloud_W, cloud_H;
-    for (int d = 0; d < num_cloud; d++) {
-      ostringstream ostr;
-      ostr << "data/cloud/" << d << ".jpg";
-      cloudData = Image(ostr.str());
-      cloud[d].create2D(cloudData.width(), cloudData.height());
-      cloud[d].submit(cloudData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
-      cloud[d].filter(Texture::LINEAR);
-    }
+    // // Import Cloud figures
+    // Image cloudData;
+    // int cloud_W, cloud_H;
+    // for (int d = 0; d < num_cloud; d++) {
+    //   ostringstream ostr;
+    //   ostr << "data/cloud/" << d << ".jpg";
+    //   cloudData = Image(ostr.str());
+    //   cloud[d].create2D(cloudData.width(), cloudData.height());
+    //   cloud[d].submit(cloudData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+    //   cloud[d].filter(Texture::LINEAR);
+    // }
   }
 
   void onCreate() {
@@ -436,31 +443,52 @@ struct OceanDataViewer {
     //// Shader
     // use a texture to control the alpha channel of each particle
     //
-    texture.create2D(250, 250, Texture::R8, Texture::RED, Texture::SHORT);
-    int Nx = texture.width();
-    int Ny = texture.height();
-    std::vector<short> alpha;
-    alpha.resize(Nx * Ny);
-    for (int j = 0; j < Ny; ++j) {
-      float y = float(j) / (Ny - 1) * 2 - 1;
-      for (int i = 0; i < Nx; ++i) {
-        float x = float(i) / (Nx - 1) * 2 - 1;
-        float m = exp(-13 * (x * x + y * y));
-        m *= std::pow(2, 15) - 1; // scale by the largest positive short int
-        alpha[j * Nx + i] = m;
-      }
-    }
-    texture.submit(&alpha[0]);
+    // texture.create2D(250, 250, Texture::R8, Texture::RED, Texture::SHORT);
+    // int Nx = texture.width();
+    // int Ny = texture.height();
+    // std::vector<short> alpha;
+    // alpha.resize(Nx * Ny);
+    // for (int j = 0; j < Ny; ++j) {
+    //   float y = float(j) / (Ny - 1) * 2 - 1;
+    //   for (int i = 0; i < Nx; ++i) {
+    //     float x = float(i) / (Nx - 1) * 2 - 1;
+    //     float m = exp(-13 * (x * x + y * y));
+    //     m *= std::pow(2, 15) - 1; // scale by the largest positive short int
+    //     alpha[j * Nx + i] = m;
+    //   }
+    // }
+    // texture.submit(&alpha[0]);
 
     // compile and link the three shaders
     //
-    shaderParticle.compile(vertex, fragment, geometry);
+    // shaderParticle.compile(vertex, fragment, geometry);
     ////
   }
 
   void onAnimate(double dt, Nav &nav, State &state, bool isPrimary) {
 
     timer += dt;
+
+    if (isPrimary) {
+      if (state.co2Playing) {
+        state.co2_clock += dt;
+      }
+    }
+
+    if (state.co2Playing) {
+      MediaFrame *frame;
+      if (videoDecoder != NULL) {
+        frame = videoDecoder->getVideoFrame(state.co2_clock);
+        if (frame) {
+          tex0Y.submit(frame->dataY.data());
+          tex0U.submit(frame->dataU.data());
+          tex0V.submit(frame->dataV.data());
+          videoDecoder->gotVideoFrame();
+        }
+      }
+    }
+
+
     if (isPrimary) {
       Vec3f point_you_want_to_see =
           Vec3f(0, 0, 0); // examplary point that you want to see
@@ -492,19 +520,19 @@ struct OceanDataViewer {
       lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
 
       // CO2 Emission animate
-      emission.update<5>();
-      emission_mesh.reset();
-      emission_mesh.primitive(Mesh::POINTS);
-      for (int i = 0; i < emission.size(); ++i) {
-        Particle &p = emission.particles[i];
-        float age = float(p.age) / emission.size();
+      // emission.update<5>();
+      // emission_mesh.reset();
+      // emission_mesh.primitive(Mesh::POINTS);
+      // for (int i = 0; i < emission.size(); ++i) {
+      //   Particle &p = emission.particles[i];
+      //   float age = float(p.age) / emission.size();
 
-        emission_mesh.vertex(p.pos);
-        // emission_mesh.color(HSV(al::rnd::uniform(1.), al::rnd::uniform(0.7),
-        // (1 - age) * 0.8));
-        p.col = HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 - 0.1*age) * 0.5);
-        emission_mesh.color(p.col);
-      }
+      //   emission_mesh.vertex(p.pos);
+      //   // emission_mesh.color(HSV(al::rnd::uniform(1.), al::rnd::uniform(0.7),
+      //   // (1 - age) * 0.8));
+      //   p.col = HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 - 0.1*age) * 0.5);
+      //   emission_mesh.color(p.col);
+      // }
 
       // Set light position
       light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
@@ -555,7 +583,7 @@ struct OceanDataViewer {
       state.cloud_swtch[1] = s_cloud_eu;
       state.cloud_swtch[2] = s_cloud_storm;
       state.co2_swtch = s_co2;
-      state.co2_frameSwtch = s_co2_vid;
+      state.co2Playing = s_co2_vid;
       for (int i = 0; i < emission.size(); ++i) {
         Particle& p = emission.particles[i];
         state.render_co2_pos[i] = p.pos;
@@ -565,16 +593,16 @@ struct OceanDataViewer {
     else // renderer
     {
       nav.set(state.global_pose);
-      light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
-      Light::globalAmbient({state.lux, state.lux, state.lux});
-      emission_mesh.reset();
-      emission_mesh.primitive(Mesh::POINTS);
-      for (int i = 0; i < emission.size(); ++i) {
-        Particle& p = emission.particles[i];
-        float age = float(p.age) / emission.size();
-        emission_mesh.vertex(state.render_co2_pos[i]);
-        emission_mesh.color(state.render_co2_col[i]);        
-      }
+      // light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
+      // Light::globalAmbient({state.lux, state.lux, state.lux});
+      // emission_mesh.reset();
+      // emission_mesh.primitive(Mesh::POINTS);
+      // for (int i = 0; i < emission.size(); ++i) {
+      //   Particle& p = emission.particles[i];
+      //   float age = float(p.age) / emission.size();
+      //   emission_mesh.vertex(state.render_co2_pos[i]);
+      //   emission_mesh.color(state.render_co2_col[i]);        
+      // }
     }
   }
 
@@ -599,27 +627,34 @@ struct OceanDataViewer {
 
     g.popMatrix();
 
-    // sphere
-    g.pushMatrix();
+    // sphere (earth)
     sphereTex.bind();
-    // g.cullFaceFront();
+
+    // inside sphere
+    if(nav.pos().mag() < 2.01f){
+    g.pushMatrix();
+    g.scale(-1,1,1);
     g.draw(sphereMesh); // only needed if we go inside the earth
-    // g.cullFaceBack();
-    // g.draw(sphereMesh);
-    sphereTex.unbind();
-    
     g.popMatrix();
 
+    } else { // outside
+      g.draw(sphereMesh);
+    }
+    // g.cullFaceFront();    
+    // g.cullFaceBack();
+    sphereTex.unbind();
+    
     // Draw data
     g.lighting(false);
-    // g.blending(true);
+    g.blending(true);
     // g.depthTesting(false);
     gl::depthFunc(GL_LEQUAL);
-    // g.blendTrans();
-    g.blendAdd();
+    g.blendTrans();
+    // g.blendAdd();
 
-    // g.shader(shaderDataset);
-    // shaderDataset.uniform("tex0", 0);   
+    g.shader(shaderDataset);
+    shaderDataset.uniform("tex0", 0);
+    shaderDataset.uniform("isVideo", 0);   
 
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
@@ -633,10 +668,19 @@ struct OceanDataViewer {
       }
     }
     // Draw CO2 frames
-    if (state.co2_frameSwtch) {
-      vid[(int)frame].bind();
+    if (state.co2Playing) {
+      // vid[(int)frame].bind();
       // g.cullFaceFront();
+      // g.draw(sphereMesh); // only needed if we go inside the earth
+      shaderDataset.uniform("texY", 0);  
+      shaderDataset.uniform("texU", 1);  
+      shaderDataset.uniform("texV", 2);
+      shaderDataset.uniform("isVideo", 1);  
+      tex0Y.bind(0);
+      tex0U.bind(1);
+      tex0V.bind(2);
       g.draw(sphereMesh); // only needed if we go inside the earth
+
     }
 
     // draw cloud
@@ -648,32 +692,32 @@ struct OceanDataViewer {
       }
     }
     // Draw CO2
-    if (state.co2_swtch) {
-      texture.bind();
-      g.meshColor();
-      g.blendTrans();
-      g.blending(true);
-      g.depthTesting(true);
-      for (int nation = 0; nation < num_county; nation++) {
-        float co2 = co2_level[nation][(int)state.year - 2013] *
-                    0.000001; // precompute micro quantity since large
-        g.pushMatrix();
-        g.translate(co2_pos[nation] * 2.01);
-        // g.translate(0,0,3);
-        g.scale(co2 * 0.01, co2 * 0.01, co2 * 0.01);
-        g.rotate(-90, Vec3f(0, 1, 0));
-        g.rotate(nation_lon[nation], Vec3f(0, 1, 0));
-        g.rotate(nation_lat[nation], Vec3f(1, 0, 1));
-        g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
-        // g.shader(shaderParticle);
-        // float halfSize = 0.005 * co2;
-        // g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
-        // g.pointSize(co2);
-        g.draw(emission_mesh);
-        g.popMatrix();
-      }
-      texture.unbind();
-    }
+    // if (state.co2_swtch) {
+    //   texture.bind();
+    //   g.meshColor();
+    //   g.blendTrans();
+    //   g.blending(true);
+    //   g.depthTesting(true);
+    //   for (int nation = 0; nation < num_county; nation++) {
+    //     float co2 = co2_level[nation][(int)state.year - 2013] *
+    //                 0.000001; // precompute micro quantity since large
+    //     g.pushMatrix();
+    //     g.translate(co2_pos[nation] * 2.01);
+    //     // g.translate(0,0,3);
+    //     g.scale(co2 * 0.01, co2 * 0.01, co2 * 0.01);
+    //     g.rotate(-90, Vec3f(0, 1, 0));
+    //     g.rotate(nation_lon[nation], Vec3f(0, 1, 0));
+    //     g.rotate(nation_lat[nation], Vec3f(1, 0, 1));
+    //     g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
+    //     // g.shader(shaderParticle);
+    //     // float halfSize = 0.005 * co2;
+    //     // g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
+    //     // g.pointSize(co2);
+    //     g.draw(emission_mesh);
+    //     g.popMatrix();
+    //   }
+    //   texture.unbind();
+    // }
   }
 
   void onSound(AudioIOData &io) {
@@ -811,7 +855,7 @@ struct OceanDataViewer {
   }
 
 
-  void loadChiDataset(std::string pathPrefix, int stressorIndex){
+  void loadDataset(std::string pathPrefix, int stressorIndex){
     Image oceanData;
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < years; d++) {
@@ -831,43 +875,65 @@ struct OceanDataViewer {
     }
   }   
 
-  void loadCO2Dataset(std::string pathPrefix){
-    Image oceanData;
-    std::cout << "Start loading CO2 frames " << std::endl;
-    for (int d = 0; d < frames; d++) {
-      ostringstream ostr;
-      ostr << pathPrefix << "co2_" << 500+d*3 << ".jpg"; 
-      // char *filename = new char[ostr.str().length() + 1];
-      // std::strcpy(filename, ostr.str().c_str());
-      // read data with the ostr string name
-      oceanData = Image(ostr.str());
+  void loadCO2Dataset(std::string path){
+    // std::string path = dataPath + videoToLoad.get();
 
-      vid[d].create2D(oceanData.width(), oceanData.height());
-      // pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
-      vid[d].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
-      vid[d].wrap(Texture::REPEAT); 
-      vid[d].filter(Texture::LINEAR);
-    }   
+    videoDecoder = new VideoDecoder();
+    videoDecoder->enableAudio(false);
+
+    if (!videoDecoder->load(path.c_str())) {
+      std::cerr << "Error loading video file: " << path << std::endl;
+    }
+    // loadVideo = false;
+
+    videoDecoder->start();
+
+    tex0Y.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
+                   Texture::RED, Texture::RED, Texture::UBYTE);
+    tex0U.create2D(videoDecoder->lineSize()[1],
+                   videoDecoder->height() / 2, Texture::RED, Texture::RED,
+                   Texture::UBYTE);
+    tex0V.create2D(videoDecoder->lineSize()[2],
+                   videoDecoder->height() / 2, Texture::RED, Texture::RED,
+                   Texture::UBYTE);
+
+    // Image oceanData;
+    // std::cout << "Start loading CO2 frames " << std::endl;
+    // for (int d = 0; d < frames; d++) {
+    //   ostringstream ostr;
+    //   ostr << pathPrefix << "co2_" << 500+d*3 << ".jpg"; 
+    //   // char *filename = new char[ostr.str().length() + 1];
+    //   // std::strcpy(filename, ostr.str().c_str());
+    //   // read data with the ostr string name
+    //   oceanData = Image(ostr.str());
+
+    //   vid[d].create2D(oceanData.width(), oceanData.height());
+    //   // pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+    //   vid[d].submit(oceanData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+    //   vid[d].wrap(Texture::REPEAT); 
+    //   vid[d].filter(Texture::LINEAR);
+    // }   
   }
 
   void loadChiData() {
     // 0. SST
-    loadChiDataset("data/nasa/sst/", 0);
+    loadDataset("data/nasa/sst/", 0);
     // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
 
     // 1. Carbon
-    loadChiDataset("data/nasa/carbon/", 1);
+    loadDataset("data/nasa/carbon/", 1);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
     // 2. Chlorophyll
-    loadChiDataset("data/nasa/chl/", 2);
+    loadDataset("data/nasa/chl/", 2);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
     // 3. Fluroscene Line Height
-    loadChiDataset("data/nasa/flh/", 3);
+    loadDataset("data/nasa/flh/", 3);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
-    loadCO2Dataset("data/co2/frames/");
+    loadCO2Dataset("data/co2/SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
+    // loadCO2Dataset("data/co2/frames/");
 
     std::cout << "Loaded Ocean data." << std::endl;
   }
