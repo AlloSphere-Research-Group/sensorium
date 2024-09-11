@@ -325,6 +325,9 @@ struct OceanDataViewer {
   Emitter<500> emission;
   Mesh emission_mesh;
 
+  std::string dataPath;
+
+
   void updateFBO(int w, int h) {
     rendered.create2D(w, h);
     renderTarget.bind();
@@ -397,7 +400,6 @@ struct OceanDataViewer {
 
     addSphereWithTexcoords(sphereMesh, 2, 50, false);
     sphereMesh.update();
-    std::string dataPath;
 
     if (sphere::isSphereMachine()) {
       if (sphere::isRendererMachine()) {
@@ -860,7 +862,7 @@ struct OceanDataViewer {
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < years; d++) {
       ostringstream ostr;
-      ostr << pathPrefix << d + 2012 << ".png"; 
+      ostr << dataPath << pathPrefix << d + 2012 << ".png"; 
       // char *filename = new char[ostr.str().length() + 1];
       // std::strcpy(filename, ostr.str().c_str());
       // read data with the ostr string name
@@ -875,8 +877,8 @@ struct OceanDataViewer {
     }
   }   
 
-  void loadCO2Dataset(std::string path){
-    // std::string path = dataPath + videoToLoad.get();
+  void loadCO2Dataset(std::string video){
+    std::string path = dataPath + video;
 
     videoDecoder = new VideoDecoder();
     videoDecoder->enableAudio(false);
@@ -917,22 +919,22 @@ struct OceanDataViewer {
 
   void loadChiData() {
     // 0. SST
-    loadDataset("data/nasa/sst/", 0);
+    loadDataset("nasa/sst/", 0);
     // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
 
     // 1. Carbon
-    loadDataset("data/nasa/carbon/", 1);
+    loadDataset("nasa/carbon/", 1);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
     // 2. Chlorophyll
-    loadDataset("data/nasa/chl/", 2);
+    loadDataset("nasa/chl/", 2);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
     // 3. Fluroscene Line Height
-    loadDataset("data/nasa/flh/", 3);
+    loadDataset("nasa/flh/", 3);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
-    loadCO2Dataset("data/co2/SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
+    loadCO2Dataset("co2/SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
     // loadCO2Dataset("data/co2/frames/");
 
     std::cout << "Loaded Ocean data." << std::endl;
