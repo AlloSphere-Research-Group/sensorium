@@ -62,7 +62,7 @@ struct OceanDataViewer {
   ParameterBool s_cloud_storm{"Clouds_Storm", "", 0.0};
   ParameterBool s_cloud_eu{"Clouds_EU", "", 0.0};
   ParameterBool s_co2{"CO2", "", 0.0};
-  ParameterBool s_co2_vid{"CO2 - Video", "", 0.0};
+  ParameterBool s_co2_vid{"CO2-Video", "", 0.0};
   ParameterBool s_nav{"Explore_Globe", "", 0.0};
   ParameterBool s_years{"CycleYears", "", 0.0};
   // ParameterBool s_chiyears{"2003_2013", "", 0.0};
