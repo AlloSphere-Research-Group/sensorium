@@ -379,6 +379,9 @@ struct VideoPlayer {
           tex0U.submit(frame->dataU.data());
           tex0V.submit(frame->dataV.data());
           videoDecoder->gotVideoFrame();
+        } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+          state.global_clock = 0;
+          videoDecoder->seek(0);
         }
       }
       if (videoDecoderNext != NULL) {
@@ -388,6 +391,10 @@ struct VideoPlayer {
           tex1U.submit(frame->dataU.data());
           tex1V.submit(frame->dataV.data());
           videoDecoderNext->gotVideoFrame();
+        } else if (videoDecoderNext->finished() &&
+                   videoDecoderNext->isLooping()) {
+          state.global_clock_next = 0;
+          videoDecoderNext->seek(0);
         }
       }
     }
