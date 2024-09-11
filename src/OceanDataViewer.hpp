@@ -29,17 +29,26 @@ struct OceanDataViewer {
     float radius;
   };
   
-  Parameter lat{"lat", "", 0.0, -90.0, 90.0};
-  Parameter lon{"lon", "", 0.0, -180.0, 180.0};
-  Parameter radius{"radius", "", 5.0, 0.0, 50.0};
-  ParameterVec3 llr{"llr", ""};
-  ParameterPose camPose{"camPose", ""};
+  Parameter lat{"lat", "Nav", 0.0, -90.0, 90.0};
+  Parameter lon{"lon", "Nav", 0.0, -180.0, 180.0};
+  Parameter radius{"radius", "Nav", 5.0, 0.0, 50.0};
+  ParameterVec3 llr{"llr", "Nav"};
+  ParameterPose camPose{"camPose", "Nav"};
+  ParameterBool animateCam{"animateCam", "Nav", 0.0};
+  ParameterBool faceTo{"Face_Center", "Nav", 1.0};
+ 
   Parameter lux{"Light", 0.6, 0, 2.5};
+  Parameter blend{"blend", "", 1.0, 0.0, 1.0};
+
   Parameter year{"Year", 2013, 2013, 2023};
-  Parameter frame{"CO2 Year", 0, 0, frames - 1};
-  //Parameter year{"Year", 2003, 2003, 2013};
-  // Parameter trans{"Trans", 0.99, 0.1, 1};
-  Parameter gain{"Audio", 0, 0, 2};
+  Parameter chiyear{"CHIYear", 2003, 2003, 2013};
+
+  // Parameter frame{"CO2 Year", 0, 0, frames - 1};
+
+  Parameter gain{"Audio", "Sound", 0, 0, 2};
+
+
+  ParameterBool s_shp{"Shipping", "", 0.0};
   ParameterBool s_carbon{"Ocean_Carbon", "", 0.0};
   ParameterBool s_slr{"Sea_level_rise", "", 0.0};
   ParameterBool s_chl{"Chlorophyll_Concentration", "", 0.0};
@@ -55,11 +64,10 @@ struct OceanDataViewer {
   ParameterBool s_co2{"CO2", "", 0.0};
   ParameterBool s_co2_vid{"CO2 - Video", "", 0.0};
   ParameterBool s_nav{"Explore_Globe", "", 0.0};
-  ParameterBool s_years{"2012_2023", "", 0.0};
-  ParameterBool s_frames{"CO2 Play", "", 0.0};
+  ParameterBool s_years{"CycleYears", "", 0.0};
+  // ParameterBool s_chiyears{"2003_2013", "", 0.0};
+  // ParameterBool s_frames{"CO2 Play", "", 0.0};
 
-  ParameterBool animateCam{"animateCam", "", 0.0};
-  ParameterBool faceTo{"Face_Center", "", 1.0};
 
   // video textures
   Texture tex0Y, tex0U, tex0V;
@@ -94,7 +102,8 @@ struct OceanDataViewer {
   Texture sst[sstCount];
 
   Texture pic[years][stressors];
-  Texture vid[frames];
+  Texture chipic[chiyears][stressors];
+
   bool loaded[years][stressors];
   Texture cloud[num_cloud];
   VAOMesh co2_mesh[num_county];
@@ -112,11 +121,7 @@ struct OceanDataViewer {
 
   ShaderProgram shaderDataset;
 
-
-
-
   std::string dataPath;
-
 
   string slurp(string fileName) {
     fstream file(fileName);
@@ -245,19 +250,25 @@ struct OceanDataViewer {
       // Molph year time
       if (state.molph) {
         year = year + 3 * dt;
-        if (year == 2013) {
+        chiyear = chiyear + 3 * dt;
+
+        if (year == 2023) {
           year = 2013;
-          state.molph = false;
+          // state.molph = false;
+          s_years.set(1);
+        }
+        if (chiyear == 2013) {
+          chiyear = 2003;
+          // state.molph = false;
           s_years.set(1);
         }
       }
       // Molph frame time
       if (state.molphFrame) {
-        frame = frame + 0.4; // flow downed co2 flow
         if (year == 0) {
           year = 0;
           state.molphFrame = false;
-          s_frames.set(1);
+          // s_frames.set(1);
         }
       }
       if (s_nav) {
@@ -272,16 +283,19 @@ struct OceanDataViewer {
       // Assign shared states for renderers
       state.global_pose.set(nav);
       state.year = year;
+      state.chiyear = chiyear;
       state.radius = radius;
       state.swtch[0] = s_sst;
       state.swtch[1] = s_carbon;
       state.swtch[2] = s_chl;
       state.swtch[3] = s_flh;
       state.swtch[4] = s_fish;
-      state.swtch[5] = s_oa;
-      state.swtch[6] = s_plastics;
-      state.swtch[7] = s_resiliency;
-      state.swtch[8] = s_slr;
+      state.swtch[5] = s_shp;
+      state.swtch[6] = s_oa;
+
+      // state.swtch[6] = s_plastics;
+      // state.swtch[7] = s_resiliency;
+      state.swtch[7] = s_slr;
       state.cloud_swtch[0] = s_cloud;
       state.cloud_swtch[1] = s_cloud_eu;
       state.cloud_swtch[2] = s_cloud_storm;
@@ -298,11 +312,19 @@ struct OceanDataViewer {
 
   void onDraw(Graphics &g, Nav &nav, State &state) {
     g.clear(0);
+
+    g.shader(shaderDataset);
+    shaderDataset.uniform("blend", blend);
+    shaderDataset.uniform("tex0", 0);
+    shaderDataset.uniform("isVideo", 0);
+    shaderDataset.uniform("mapFunction", -1);
+
+
+    gl::depthFunc(GL_LEQUAL);
     g.culling(false);
-    // g.cullFaceFront();
     // g.lighting(true);
     g.light(light);
-    g.texture();
+    // g.texture();
     g.depthTesting(true);
     g.blending(true);
     g.blendTrans();
@@ -328,56 +350,30 @@ struct OceanDataViewer {
     } else { // outside
       g.draw(sphereMesh);
     }
-    // g.cullFaceFront();
-    // g.cullFaceBack();
     sphereTex.unbind();
 
     // Draw data
-    g.lighting(false);
-    g.blending(true);
-    // g.depthTesting(false);
-    gl::depthFunc(GL_LEQUAL);
-    g.blendTrans();
-    // g.blendAdd();
+    // g.lighting(false);
+    // g.blending(true);
+    // g.blendTrans();
 
-    g.shader(shaderDataset);
-    shaderDataset.uniform("tex0", 0);
-    shaderDataset.uniform("isVideo", 0);
 
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
-        // g.clearDepth();
-
-        // shaderDataset.uniform("mapFunction", j);
-
-        pic[(int)state.year - 2003][j].bind();
-        // g.cullFaceFront();
+        int offset = 2013;
+        float year = state.year;
+        if(j >= 4){
+          offset = 2003;
+          year = state.chiyear;
+        }
+        shaderDataset.uniform("mapFunction", j);
+        pic[(int)year - offset][j].bind();
         g.draw(sphereMesh); // only needed if we go inside the earth
-        // g.cullFaceBack();
-        // g.draw(sphereMesh);
-        // g.meshColor();
-        // g.blendTrans();
-        // g.pushMatrix();
-        // float ps = 50 / nav.pos().magSqr();
-        // if (ps > 7) {
-        //   ps = 7;
-        // }
-        // g.pointSize(ps);
-        // Update data pose when nav is inside of the globe
-        // if (state.radius < 2) {
-        //   g.scale(0.95);
-        // } else {
-        //   g.scale(1.0005);
-        // }
-        // g.draw(pic[(int)state.year - 2003][j]);
-        // g.popMatrix();
       }
     }
+
     // Draw CO2 frames
     if (state.co2Playing) {
-      // vid[(int)frame].bind();
-      // g.cullFaceFront();
-      // g.draw(sphereMesh); // only needed if we go inside the earth
       shaderDataset.uniform("texY", 0);
       shaderDataset.uniform("texU", 1);
       shaderDataset.uniform("texV", 2);
@@ -391,22 +387,9 @@ struct OceanDataViewer {
     // draw cloud
     for (int j = 0; j < num_cloud; j++) {
       if (state.cloud_swtch[j]) {
-        // g.clearDepth();
         cloud[j].bind();
-        // g.cullFaceFront();
         g.draw(sphereMesh);
-        // g.cullFaceBack();
-        // g.draw(sphereMesh);
-        // g.meshColor();
-        // // g.blendTrans();
-        // g.pushMatrix();
-        // float ps = 100 / nav.pos().magSqr();
-        // if (ps > 7) {
-        //   ps = 7;
-        // }
-        // g.pointSize(0.4);
-        // g.draw(cloud[j]); // only needed if we go inside the earth
-        // g.popMatrix();
+
       }
     }
 
@@ -436,15 +419,6 @@ struct OceanDataViewer {
   }
 
   void setGeoTarget(float la, float lo, float r = 3.2, float duration = 4.0) {
-    // sourceGeoLoc.lat = lat.get();
-    // sourceGeoLoc.lon = lon.get();
-    // sourceGeoLoc.radius = radius.get();
-    // targetGeoLoc.lat = la;   // 53.54123998879464;
-    // targetGeoLoc.lon = lo;   // 9.950943100405375;
-    // targetGeoLoc.radius = r; // 3.2;
-    // morphDuration = duration;
-    // morphProgress = morphDuration;
-    // hoverDuration = 0;
     navTarget.pos(Vec3d(-r * cos(la / 180.0 * M_PI) * sin(lo / 180.0 * M_PI),
                         r * sin(la / 180.0 * M_PI),
                         -r * cos(la / 180.0 * M_PI) * cos(lo / 180.0 * M_PI)));
@@ -459,89 +433,66 @@ struct OceanDataViewer {
                       State &state) {
     std::string displayText = "AlloOcean. Ocean stressor (2012-2023)";
     // "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)"
-    *gui << lat << lon << radius; // << lux << year << gain;
-    *gui << year << frame;
-    *gui << s_years << s_frames;
+    *gui << lat << lon << radius << blend; // << lux << year << gain;
+    *gui << year << chiyear; // << frame;
+    *gui << s_years; // << s_frames;
     *gui << s_nav << faceTo << animateCam;
     *gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
-    *gui << s_fish << s_plastics << s_resiliency;
+    *gui << s_fish << s_shp << s_plastics << s_resiliency;
     *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
     // *gui << s_cf_dd << a_f // currently we don't have this data
     // *gui << s_ci << s_oc << s_carbon;
 
     // *gui << lat << lon << radius << lux << year << trans << gain;
 
-    presets << year << frame << camPose;
-    presets << s_years << s_frames << s_nav;
+    presets << year << camPose << blend;
+    presets << s_years << s_nav;
     presets << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
     presets << s_fish << s_plastics << s_resiliency;
     presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid
             << lux;
 
-    seq << llr << s_years << s_frames << s_nav << camPose << faceTo;
+    seq << llr << s_years << s_nav << camPose << faceTo << blend;
     seq << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
     seq << s_fish << s_plastics << s_resiliency;
     seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
 
-    // rec << year;
-    // rec << s_years << s_nav;
-    // rec << s_ci << s_oc << s_carbon << s_dh << s_slr << s_oa << s_sst;
-    // rec << s_cf_pl << s_cf_ph << s_cf_dl << s_cf_dh << s_shp;
-    // rec << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << lux;
 
     camPose.registerChangeCallback([&](Pose p) { nav.set(p); });
     llr.registerChangeCallback([&](Vec3f v) { setGeoTarget(v.x, v.y, v.z); });
 
     lat.registerChangeCallback([&](float value) {
       setGeoTarget(value, lon, radius);
-      // nav.pos(Vec3d(-radius.get() * cos(value / 180.0 * M_PI) *
-      //                     sin(lon.get() / 180.0 * M_PI),
-      //                 radius.get() * sin(value / 180.0 * M_PI),
-      //                 -radius.get() * cos(value / 180.0 * M_PI) *
-      //                     cos(lon.get() / 180.0 * M_PI)));
-
-      // nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
 
     lon.registerChangeCallback([&](float value) {
       setGeoTarget(lat, value, radius);
-      // nav.pos(Vec3d(-radius.get() * cos(lat.get() / 180.0 * M_PI) *
-      //                     sin(value / 180.0 * M_PI),
-      //                 radius.get() * sin(lat.get() / 180.0 * M_PI),
-      //                 -radius.get() * cos(lat.get() / 180.0 * M_PI) *
-      //                     cos(value / 180.0 * M_PI)));
-      // nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
 
     radius.registerChangeCallback([&](float value) {
       setGeoTarget(lat, lon, value);
-      // nav.pos(Vec3d(-value * cos(lat.get() / 180.0 * M_PI) *
-      //                     sin(lon.get() / 180.0 * M_PI),
-      //                 value * sin(lat.get() / 180.0 * M_PI),
-      //                 -value * cos(lat.get() / 180.0 * M_PI) *
-      //                     cos(lon.get() / 180.0 * M_PI)));
-      // nav.faceToward(Vec3d(0), Vec3d(0, 1, 0));
     });
 
     s_years.registerChangeCallback([&](int value) {
       if (value) {
         state.molph = true; //! state.molph;
         year = 2012;
+        chiyear = 2003;
         // s_years.set(0);
       } else {
         state.molph = false;
       }
     });
 
-    s_frames.registerChangeCallback([&](int value) {
-      if (value) {
-        state.molphFrame = true; //! state.molph;
-        frame = 0;
-        // s_years.set(0);
-      } else {
-        state.molphFrame = false;
-      }
-    });
+    // s_frames.registerChangeCallback([&](int value) {
+    //   if (value) {
+    //     state.molphFrame = true; //! state.molph;
+    //     // frame = 0;
+    //     // s_years.set(0);
+    //   } else {
+    //     state.molphFrame = false;
+    //   }
+    // });
   }
 
   void loadDataset(std::string pathPrefix, int stressorIndex) {
@@ -550,15 +501,9 @@ struct OceanDataViewer {
     for (int d = 0; d < years; d++) {
       ostringstream ostr;
       ostr << dataPath << pathPrefix << d + 2012 << ".png";
-      // ostr << pathPrefix << d + 2003 << "_equi.png"; 
-      // char *filename = new char[ostr.str().length() + 1];
-      // std::strcpy(filename, ostr.str().c_str());
-      // read data with the ostr string name
       oceanData = Image(ostr.str());
 
       pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
-      // pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA,
-      // GL_UNSIGNED_BYTE);
       pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA,
                                    GL_UNSIGNED_BYTE);
       pic[d][stressorIndex].wrap(Texture::REPEAT);
@@ -567,20 +512,15 @@ struct OceanDataViewer {
     }
   }
 
-  void loadChiDataset(std::string pathPrefix, int stressorIndex) {
+  void loadChiDataset(std::string prefix, std::string postfix, int stressorIndex) {
     Image oceanData;
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
-    for (int d = 0; d < years; d++) {
+    for (int d = 0; d < chiyears; d++) {
       ostringstream ostr;
-      ostr << dataPath << pathPrefix << d + 2003 << "_equi.png"; 
-      // char *filename = new char[ostr.str().length() + 1];
-      // std::strcpy(filename, ostr.str().c_str());
-      // read data with the ostr string name
+      ostr << dataPath << prefix << d + 2003 << postfix;; 
       oceanData = Image(ostr.str());
 
       pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
-      // pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA,
-      // GL_UNSIGNED_BYTE);
       pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA,
                                    GL_UNSIGNED_BYTE);
       pic[d][stressorIndex].wrap(Texture::REPEAT);
@@ -636,57 +576,56 @@ struct OceanDataViewer {
  
 
     // 0. SST
-    // loadChiDataset("data/chi/sst/sst_05_", 0);
+    // loadChiDataset("chi/sst/sst_05_", 0);
     // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
 
     // 1. Nutrients
-    // loadChiDataset("data/chi/nutrient/nutrient_pollution_impact_5_", 1);
+    // loadChiDataset("chi/nutrient/nutrient_pollution_impact_5_", 1);
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
 
     // 2. Shipping
-    // loadChiDataset("data/chi/ship/ship_impact_10_", 2);
+    loadChiDataset("chi/ship/ship_impact_10_", "_equi.png", 5);
     // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60);
 
     // 3. Ocean Acidification
-    // loadChiDataset("data/chi/oa/oa_10_", 3);
+    loadChiDataset("chi/oa/oa_10_", "_impact.png", 6);
     // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1);
 
     // 4. Sea level rise
-    loadChiDataset("data/chi/slr/slr_impact_5_", 4);
+    loadChiDataset("chi/slr/slr_impact_5_", "_equi.png", 7);
     // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
 
     // 5. Fishing demersal low
-    loadChiDataset("data/chi/fish/fdl_10_", 5);
+    loadChiDataset("chi/fish/fdl_10_", "_impact.png", 4);
     // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
     // 6. Fishing demersal high
-    loadChiDataset("data/chi/fish/fdh_10_", 6);
+    // loadChiDataset("chi/fish/fdh_10_", 6);
     // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
     // 7. Fishing pelagic low
-    loadChiDataset("data/chi/fish/fpl_10_", 7);
+    // loadChiDataset("chi/fish/fpl_10_", 7);
     // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
     // 8. Fishing pelagic high
-    loadChiDataset("data/chi/fish/fph_100_", 8);
+    // loadChiDataset("chi/fish/fph_100_", 8);
     // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
     // 9. Direct human
-    loadChiDataset("data/chi/dh/dh_10_", 9);
+    // loadChiDataset("chi/dh/dh_10_", 9);
     // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
     // 10. Organic chemical
-    loadChiDataset("data/chi/oc/oc_10_", 10);
+    // loadChiDataset("chi/oc/oc_10_", 10);
     // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
     // 11. Cumulative human impacts
-    loadChiDataset("data/chi/chi/cumulative_impact_10_", 11);
+    // loadChiDataset("chi/chi/cumulative_impact_10_", 11);
     // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
 
-    // Co2
+    // Co2 Video data
     loadCO2Dataset("co2/SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
-    // loadCO2Dataset("data/co2/frames/");
 
     std::cout << "Loaded Ocean data." << std::endl;
   }

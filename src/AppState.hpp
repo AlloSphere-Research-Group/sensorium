@@ -2,7 +2,8 @@
 #ifndef APPSTATE_HPP
 #define APPSTATE_HPP
 
-static const int years = 11;       // Total number of years (2003~2013)
+static const int chiyears = 11;       // Total number of years (2003~2013)
+static const int years = 12;       // Total number of years (2012~2023)
 static const int stressors = 12;   // Total number of stressors
 static const int num_cloud = 3;    // Total number of stressors
 static const int num_county = 187; // Total number of stressors
@@ -11,7 +12,6 @@ static const int frames = 400;     // Total number of CO2 frames
 struct State {
   // video player
   bool videoPlaying;
-  // bool co2Playing;
   double global_clock;
   double global_clock_next;
   double co2_clock;
@@ -26,6 +26,7 @@ struct State {
   bool co2Playing{false};
   float lux;
   float year;
+  float chiyear;
   float radius;
   int osc_click[10];
   // Mesh emission_mesh;
