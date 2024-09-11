@@ -324,7 +324,6 @@ struct OceanDataViewer {
       g.pushMatrix();
       g.scale(-1, 1, 1);
       g.draw(sphereMesh); // only needed if we go inside the earth
-      g.popMatrix();
     } else { // outside
       g.draw(sphereMesh);
     }
@@ -378,6 +377,11 @@ struct OceanDataViewer {
         g.draw(sphereMesh);
       }
     }
+
+    if (nav.pos().mag() < 2.01f) {
+      g.popMatrix(); // pop from push above
+    }
+
    
   }
 
