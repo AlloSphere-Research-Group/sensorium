@@ -26,15 +26,20 @@ void main() {
     yuv0.g = texture(texU, vTexcoord).r - 0.5;
     yuv0.b = texture(texV, vTexcoord).r - 0.5;
 
-    vec4 rgba0;
-    rgba0.r = yuv0.r + 1.596 * yuv0.b;
-    rgba0.g = yuv0.r - 0.813 * yuv0.b - 0.391 * yuv0.g;
-    rgba0.b = yuv0.r + 2.018 * yuv0.g;
-    rgba0.a = 1.0;
+    vec4 c;
+    c.r = yuv0.r + 1.596 * yuv0.b;
+    c.g = yuv0.r - 0.813 * yuv0.b - 0.391 * yuv0.g;
+    c.b = yuv0.r + 2.018 * yuv0.g;
+    // c.a = 1.0;
+    // c.a = (c.r+c.r+c.g+c.g+c.g+c.b) / 6;
+    c.a = (c.r + c.g + c.b) / 1.35;
 
-    pixel = rgba0;
+    pixel = c;
   } else {
-    pixel = texture(tex0, vTexcoord);
+    vec4 c = texture(tex0, vTexcoord);
+    // c.a = (c.r+c.r+c.g+c.g+c.g+c.b) / 6;
+    c.a = (c.r + c.g + c.b) / 3;
+    pixel = c;
   }
 
   // if(pixel.r == 0.0)

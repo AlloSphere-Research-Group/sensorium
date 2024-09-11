@@ -15,7 +15,7 @@
 #include "Gamma/Oscillator.h"
 #include "al/sound/al_Reverb.hpp"
 
-#include "al/io/al_CSVReader.hpp"
+// #include "al/io/al_CSVReader.hpp"
 #include "al/math/al_Random.hpp"
 
 #include "al_ext/video/al_VideoDecoder.hpp"
@@ -28,203 +28,7 @@ struct OceanDataViewer {
     float lon;
     float radius;
   };
-
-  struct CO2Types {
-    double val[years + 2];
-  };
-
-  struct Particle {
-    Vec3f pos, vel, acc;
-    Color col;
-    int age = 0;
-
-    void update(int ageInc) {
-      vel += acc;
-      pos += vel;
-      age += ageInc;
-    }
-  };
-
-  template <int N> struct Emitter {
-    Particle particles[N];
-    int tap = 0;
-
-    Emitter() {
-      for (auto &p : particles)
-        p.age = N;
-    }
-
-    template <int M> void update() {
-      for (auto &p : particles)
-        p.update(M);
-
-      for (int i = 0; i < M; ++i) {
-        auto &p = particles[tap];
-        { // co2 particle spread speed
-          p.vel.set(al::rnd::gaussian() * 0.003, al::rnd::gaussian() * 0.003,
-                    al::rnd::gaussian() * 0.003);
-          p.acc.set(al::rnd::gaussian() * 0.0003, al::rnd::gaussian() * 0.0003,
-                    al::rnd::gaussian() * 0.0003);
-        }
-        p.pos.set(al::rnd::gaussian() * 1, al::rnd::gaussian() * 1, 0);
-        p.age = 0;
-        ++tap;
-        if (tap >= N)
-          tap = 0;
-      }
-    }
-
-    int size() { return N; }
-  };
-
-  const char *vertex = R"(
-  #version 400
-
-  layout (location = 0) in vec3 vertexPosition;
-  layout (location = 1) in vec4 vertexColor;
-
-  uniform mat4 al_ModelViewMatrix;
-  uniform mat4 al_ProjectionMatrix;
-
-  out Vertex {
-    vec4 color;
-  } vertex;
-
-  void main() {
-    gl_Position = al_ModelViewMatrix * vec4(vertexPosition, 1.0);
-    vertex.color = vertexColor;
-  }
-  )";
-  const char *fragment = R"(
-  #version 400
-
-  in Fragment {
-    vec4 color;
-    vec2 textureCoordinate;
-  } fragment;
-
-  uniform sampler2D alphaTexture;
-
-  layout (location = 0) out vec4 fragmentColor;
-
-  void main() {
-    // use the first 3 components of the color (xyz is rgb), but take the alpha value from the texture
-    //
-    fragmentColor = vec4(fragment.color.xyz, texture(alphaTexture, fragment.textureCoordinate));
-  }
-  )";
-  const char *geometry = R"(
-  #version 400
-
-  // take in a point and output a triangle strip with 4 vertices (aka a "quad")
-  //
-  layout (points) in;
-  layout (triangle_strip, max_vertices = 4) out;
-
-  uniform mat4 al_ProjectionMatrix;
-
-  // this uniform is *not* passed in automatically by AlloLib; do it manually
-  //
-  uniform float halfSize;
-
-  in Vertex {
-    vec4 color;
-  } vertex[];
-
-  out Fragment {
-    vec4 color;
-    vec2 textureCoordinate;
-  } fragment;
-
-  void main() {
-    mat4 m = al_ProjectionMatrix; // rename to make lines shorter
-    vec4 v = gl_in[0].gl_Position; // al_ModelViewMatrix * gl_Position
-
-    gl_Position = m * (v + vec4(-halfSize, -halfSize, 0.0, 0.0));
-    fragment.textureCoordinate = vec2(0.0, 0.0);
-    fragment.color = vertex[0].color;
-    EmitVertex();
-
-    gl_Position = m * (v + vec4(halfSize, -halfSize, 0.0, 0.0));
-    fragment.textureCoordinate = vec2(1.0, 0.0);
-    fragment.color = vertex[0].color;
-    EmitVertex();
-
-    gl_Position = m * (v + vec4(-halfSize, halfSize, 0.0, 0.0));
-    fragment.textureCoordinate = vec2(0.0, 1.0);
-    fragment.color = vertex[0].color;
-    EmitVertex();
-
-    gl_Position = m * (v + vec4(halfSize, halfSize, 0.0, 0.0));
-    fragment.textureCoordinate = vec2(1.0, 1.0);
-    fragment.color = vertex[0].color;
-    EmitVertex();
-
-    EndPrimitive();
-  }
-  )";
-
-  const std::string fadevert = R"(
-  #version 330
-  uniform mat4 al_ModelViewMatrix;
-  uniform mat4 al_ProjectionMatrix;
-
-  layout (location = 0) in vec3 position;
-  layout (location = 2) in vec2 texcoord;
-
-  uniform float eye_sep;
-  uniform float foc_len;
-
-  out vec2 texcoord_;
-
-  vec4 stereo_displace(vec4 v, float e, float f) {
-    // eye to vertex distance
-    float l = sqrt((v.x - e) * (v.x - e) + v.y * v.y + v.z * v.z);
-    // absolute z-direction distance
-    float z = abs(v.z);
-    // x coord of projection of vertex on focal plane when looked from eye
-    float t = f * (v.x - e) / z;
-    // x coord of displaced vertex to make displaced vertex be projected on focal plane
-    // when looked from origin at the same point original vertex would be projected
-    // when looked form eye
-    v.x = z * (e + t) / f;
-    // set distance from origin to displaced vertex same as eye to original vertex
-    v.xyz = normalize(v.xyz);
-    v.xyz *= l;
-    return v;
-  }
-
-  void main() {
-    if (eye_sep == 0) {
-      gl_Position = al_ProjectionMatrix * al_ModelViewMatrix * vec4(position, 1.0);
-    }
-    else {
-      gl_Position = al_ProjectionMatrix * stereo_displace(al_ModelViewMatrix * vec4(position, 1.0), eye_sep, foc_len);
-    }
-
-    texcoord_ = texcoord;
-  }
-  )";
-
-  const std::string fadefrag = R"(
-  #version 330
-  uniform sampler2D tex0;
-  uniform sampler2D tex1;
-  uniform float blend0;
-  uniform float blend1;
-  uniform float brightness;
-
-  in vec2 texcoord_;
-  out vec4 frag_color;
-
-  // can apply filters here
-  void main() {
-    vec4 c0 = blend0 * texture(tex0, texcoord_);
-    vec4 c1 = blend1 * texture(tex1, texcoord_);
-    frag_color = brightness * (c0 + c1);
-  }
-  )";
-
+  
   Parameter lat{"lat", "", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "", 5.0, 0.0, 50.0};
@@ -304,32 +108,14 @@ struct OceanDataViewer {
   gam::Biquad<> mFilter{};
   Reverb<float> reverb;
   // osc::Recv server;
-  CSVReader reader;
-  Vec3f co2_pos[num_county];
-  float co2_level[num_county][years];
-  ShaderProgram pointShader;
-  ShaderProgram lineShader;
-  Texture pointTexture;
-  Texture lineTexture;
-  Texture texture;              // co2
-  ShaderProgram shaderParticle; // co2
-  ShaderProgram shaderDataset;  // co2
 
-  FBO renderTarget;
-  Texture rendered;
-  float timer = 0;
-  // CO2
-  Emitter<500> emission;
-  Mesh emission_mesh;
+  ShaderProgram shaderDataset;
+
+
+
 
   std::string dataPath;
 
-  void updateFBO(int w, int h) {
-    rendered.create2D(w, h);
-    renderTarget.bind();
-    renderTarget.attachTexture2D(rendered);
-    renderTarget.unbind();
-  }
 
   string slurp(string fileName) {
     fstream file(fileName);
@@ -343,52 +129,6 @@ struct OceanDataViewer {
   }
 
   void onInit() {
-    // Import CO2 data
-    // CSV columms label: lat + long + years (2003~2013)
-    // for (int k = 0; k < years + 2; k++) {
-    //   reader.addType(CSVReader::REAL);
-    // }
-    // reader.readFile("data/co2/1990_2020.csv");
-    // std::vector<CO2Types> co2_rows = reader.copyToStruct<CO2Types>();
-    // // to test the csv import . values supposed to be: co2_row.val[-]: first
-    // two
-    // // column (lat, long) + years data year data : co2_row.val[2 ~ :] for
-    // (auto
-    // // co2_row : co2_rows) {
-    // //   cout << co2_row.val[0] << endl;
-    // // }
-    // // convert co2 lat lon to xyz
-    // int nation_id = 0;
-    // for (auto co2_row : co2_rows) {
-    //   float lat = co2_row.val[0];
-    //   float lon = co2_row.val[1];
-    //   co2_pos[nation_id] =
-    //       Vec3f(-cos(lat / 180.0 * M_PI) * sin(lon / 180.0 * M_PI),
-    //             sin(lat / 180.0 * M_PI),
-    //             -cos(lat / 180.0 * M_PI) * cos(lon / 180.0 * M_PI));
-    //   for (int i = 0; i < years; i++) {
-    //     co2_level[nation_id][i] = co2_row.val[2 + i];
-    //   }
-    //   // addCube(co2_mesh[nation_id], false, 0.01);
-    //   // co2_mesh[nation_id].decompress();
-    //   // co2_mesh[nation_id].generateNormals();
-    //   // co2_mesh[nation_id].update();
-    //   nation_lat[nation_id] = lat;
-    //   nation_lon[nation_id] = lon;
-    //   nation_id++;
-    // }
-
-    // // Import Cloud figures
-    // Image cloudData;
-    // int cloud_W, cloud_H;
-    // for (int d = 0; d < num_cloud; d++) {
-    //   ostringstream ostr;
-    //   ostr << "data/cloud/" << d << ".jpg";
-    //   cloudData = Image(ostr.str());
-    //   cloud[d].create2D(cloudData.width(), cloudData.height());
-    //   cloud[d].submit(cloudData.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
-    //   cloud[d].filter(Texture::LINEAR);
-    // }
   }
 
   void onCreate() {
@@ -440,34 +180,10 @@ struct OceanDataViewer {
     reverb.damping(0.5f);   // High-frequency damping, in [0,1]
     reverb.decay(0.6f);     // Tail decay factor, in [0,1]
 
-    //// Shader
-    // use a texture to control the alpha channel of each particle
-    //
-    // texture.create2D(250, 250, Texture::R8, Texture::RED, Texture::SHORT);
-    // int Nx = texture.width();
-    // int Ny = texture.height();
-    // std::vector<short> alpha;
-    // alpha.resize(Nx * Ny);
-    // for (int j = 0; j < Ny; ++j) {
-    //   float y = float(j) / (Ny - 1) * 2 - 1;
-    //   for (int i = 0; i < Nx; ++i) {
-    //     float x = float(i) / (Nx - 1) * 2 - 1;
-    //     float m = exp(-13 * (x * x + y * y));
-    //     m *= std::pow(2, 15) - 1; // scale by the largest positive short int
-    //     alpha[j * Nx + i] = m;
-    //   }
-    // }
-    // texture.submit(&alpha[0]);
 
-    // compile and link the three shaders
-    //
-    // shaderParticle.compile(vertex, fragment, geometry);
-    ////
   }
 
   void onAnimate(double dt, Nav &nav, State &state, bool isPrimary) {
-
-    timer += dt;
 
     if (isPrimary) {
       if (state.co2Playing) {
@@ -520,21 +236,6 @@ struct OceanDataViewer {
       lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
       lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
 
-      // CO2 Emission animate
-      // emission.update<5>();
-      // emission_mesh.reset();
-      // emission_mesh.primitive(Mesh::POINTS);
-      // for (int i = 0; i < emission.size(); ++i) {
-      //   Particle &p = emission.particles[i];
-      //   float age = float(p.age) / emission.size();
-
-      //   emission_mesh.vertex(p.pos);
-      //   // emission_mesh.color(HSV(al::rnd::uniform(1.),
-      //   al::rnd::uniform(0.7),
-      //   // (1 - age) * 0.8));
-      //   p.col = HSV(al::rnd::uniform(0.2), al::rnd::uniform(0.1, 0.3), (1 -
-      //   0.1*age) * 0.5); emission_mesh.color(p.col);
-      // }
 
       // Set light position
       light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
@@ -585,25 +286,12 @@ struct OceanDataViewer {
       state.cloud_swtch[2] = s_cloud_storm;
       state.co2_swtch = s_co2;
       state.co2Playing = s_co2_vid;
-      for (int i = 0; i < emission.size(); ++i) {
-        Particle &p = emission.particles[i];
-        state.render_co2_pos[i] = p.pos;
-        state.render_co2_col[i] = p.col;
-      }
     } // prim end
     else // renderer
     {
       nav.set(state.global_pose);
       // light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
       // Light::globalAmbient({state.lux, state.lux, state.lux});
-      // emission_mesh.reset();
-      // emission_mesh.primitive(Mesh::POINTS);
-      // for (int i = 0; i < emission.size(); ++i) {
-      //   Particle& p = emission.particles[i];
-      //   float age = float(p.age) / emission.size();
-      //   emission_mesh.vertex(state.render_co2_pos[i]);
-      //   emission_mesh.color(state.render_co2_col[i]);
-      // }
     }
   }
 
@@ -649,8 +337,8 @@ struct OceanDataViewer {
     g.blending(true);
     // g.depthTesting(false);
     gl::depthFunc(GL_LEQUAL);
-    // g.blendTrans();
-    g.blendAdd();
+    g.blendTrans();
+    // g.blendAdd();
 
     g.shader(shaderDataset);
     shaderDataset.uniform("tex0", 0);
@@ -690,33 +378,7 @@ struct OceanDataViewer {
         g.draw(sphereMesh);
       }
     }
-    // Draw CO2
-    // if (state.co2_swtch) {
-    //   texture.bind();
-    //   g.meshColor();
-    //   g.blendTrans();
-    //   g.blending(true);
-    //   g.depthTesting(true);
-    //   for (int nation = 0; nation < num_county; nation++) {
-    //     float co2 = co2_level[nation][(int)state.year - 2013] *
-    //                 0.000001; // precompute micro quantity since large
-    //     g.pushMatrix();
-    //     g.translate(co2_pos[nation] * 2.01);
-    //     // g.translate(0,0,3);
-    //     g.scale(co2 * 0.01, co2 * 0.01, co2 * 0.01);
-    //     g.rotate(-90, Vec3f(0, 1, 0));
-    //     g.rotate(nation_lon[nation], Vec3f(0, 1, 0));
-    //     g.rotate(nation_lat[nation], Vec3f(1, 0, 1));
-    //     g.pointSize(co2 * 0.1*log2(1+co2) / radius.get());
-    //     // g.shader(shaderParticle);
-    //     // float halfSize = 0.005 * co2;
-    //     // g.shader().uniform("halfSize", halfSize < 0.01 ? 0.01 : halfSize);
-    //     // g.pointSize(co2);
-    //     g.draw(emission_mesh);
-    //     g.popMatrix();
-    //   }
-    //   texture.unbind();
-    // }
+   
   }
 
   void onSound(AudioIOData &io) {

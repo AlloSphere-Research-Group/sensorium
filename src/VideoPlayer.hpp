@@ -163,7 +163,7 @@ struct VideoPlayer {
   ParameterBool playingVideo{"playingVideo", "", 0.0};
   ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
   Parameter brightness{"brightness", "", 1.0, 0.0, 2.0};
-  Parameter blend0{"blend0", "", 1.0, 0.0, 1.0};
+  Parameter blend0{"blend0", "", 0.0, 0.0, 1.0};
   Parameter blend1{"blend1", "", 1.0, 0.0, 1.0};
 
   Trigger playWater{"Play_Water", ""};
