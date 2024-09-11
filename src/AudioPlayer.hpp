@@ -78,11 +78,11 @@ struct AudioPlayer {
 
       if (al::sphere::isSphereMachine()) {
         for (int i = 1; i <= 12; i++)
-          io.out(i) = l * AudioVolume * 0.2;
-        io.out(24) = l * AudioVolume * 1.0;
+          io.out(i) = l * AudioVolume * 0.4;
+        io.out(24) = l * AudioVolume * 0.7;
         for (int i = 49; i <= 60; i++)
-          io.out(i) = r * AudioVolume * 0.2;
-        io.out(39) = r * AudioVolume * 1.0;
+          io.out(i) = r * AudioVolume * 0.4;
+        io.out(39) = r * AudioVolume * 0.7;
         io.out(48) = (l + r) * SubVolume * 0.5;
       } else {
         io.out(0) = l * AudioVolume;

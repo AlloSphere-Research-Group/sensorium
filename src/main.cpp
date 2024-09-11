@@ -272,6 +272,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 int main() {
   SensoriumApp app;
   app.dimensions(1200, 800);
-  app.configureAudio(44100, 512, 2, 0);
+  app.configureAudio(44100, 512, 60, 0);
   app.start();
 }
