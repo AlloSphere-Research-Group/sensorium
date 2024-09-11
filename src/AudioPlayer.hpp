@@ -14,8 +14,8 @@ struct AudioPlayer {
   ParameterBool playLoop{"Loop Audio", "", 1};
   ParameterBool pauseAudio{"Pause Audio", "", 0};
   ParameterBool rewindAudio{"Rewind Audio", "", 0};
-  Parameter AudioVolume{"Audio_Volume", 0.6, 0, 2.5};
-  Parameter SubVolume{"Sub_Volume", 0.6, 0, 2.5};
+  Parameter AudioVolume{"Audio_Volume", 1.1, 0, 2.5};
+  Parameter SubVolume{"Sub_Volume", 1.6, 0, 2.5};
 
   void onInit() {
     // const char name[] = "data/jkm-wave-project.wav";

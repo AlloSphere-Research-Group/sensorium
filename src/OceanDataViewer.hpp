@@ -378,6 +378,8 @@ struct OceanDataViewer {
       shaderDataset.uniform("texU", 1);
       shaderDataset.uniform("texV", 2);
       shaderDataset.uniform("isVideo", 1);
+      shaderDataset.uniform("mapFunction", 0);
+
       tex0Y.bind(0);
       tex0U.bind(1);
       tex0V.bind(2);
