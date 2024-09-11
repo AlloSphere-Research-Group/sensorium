@@ -634,11 +634,10 @@ struct OceanDataViewer {
 
     // inside sphere
     if(nav.pos().mag() < 2.01f){
-    g.pushMatrix();
-    g.scale(-1,1,1);
-    g.draw(sphereMesh); // only needed if we go inside the earth
-    g.popMatrix();
-
+      g.pushMatrix();
+      g.scale(-1,1,1);
+      g.draw(sphereMesh); // only needed if we go inside the earth
+      g.popMatrix();
     } else { // outside
       g.draw(sphereMesh);
     }
@@ -651,8 +650,8 @@ struct OceanDataViewer {
     g.blending(true);
     // g.depthTesting(false);
     gl::depthFunc(GL_LEQUAL);
-    g.blendTrans();
-    // g.blendAdd();
+    // g.blendTrans();
+    g.blendAdd();
 
     g.shader(shaderDataset);
     shaderDataset.uniform("tex0", 0);
