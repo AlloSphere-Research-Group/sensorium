@@ -14,11 +14,11 @@ struct AudioPlayer {
   std::vector<float> buffer2;
   ParameterBool playIntro{"Play_Intro", "", 0};
   ParameterBool playAudio{"Play_Audio", "", 0};
-  ParameterBool playLoop{"Loop Audio", "", 1};
-  ParameterBool pauseAudio{"Pause Audio", "", 0};
-  ParameterBool rewindAudio{"Rewind Audio", "", 0};
+  ParameterBool playLoop{"Loop_Audio", "", 1};
+  ParameterBool pauseAudio{"Pause_Audio", "", 0};
+  ParameterBool rewindAudio{"Rewind_Audio", "", 0};
   Parameter AudioVolume{"Audio_Volume", 1.1, 0, 2.5};
-  Parameter SubVolume{"Sub_Volume", 1.6, 0, 2.5};
+  Parameter SubVolume{"Sub_Volume", 0.5, 0, 2.5};
 
   void onInit() {
     // const char name[] = "data/jkm-wave-project.wav";
@@ -48,11 +48,13 @@ struct AudioPlayer {
          << SubVolume;
 
     presets << AudioVolume << SubVolume << playAudio << rewindAudio;
-    seq << playIntro << playAudio << rewindAudio << AudioVolume << SubVolume;
+    seq << playIntro << playAudio << pauseAudio << rewindAudio << AudioVolume << SubVolume;
 
     playIntro.registerChangeCallback([&](float value) {
-      if (value == 1.0)
+      if (value == 1.0){
+        intro.setRewind();
         intro.setPlay();
+      } else intro.setPause();
     });
     playAudio.registerChangeCallback([&](float value) {
       if (value == 1.0)
