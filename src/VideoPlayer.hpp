@@ -405,7 +405,7 @@ struct VideoPlayer {
     if (state.videoPlaying) {
       // nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
       // nav.pos().set(0);
-      nav.setIdentity();
+      // nav.setIdentity();
 
       g.clear();
 
@@ -421,6 +421,9 @@ struct VideoPlayer {
         tex1Y.bind(3);
         tex1U.bind(4);
         tex1V.bind(5);
+        g.translate(nav.pos());
+        g.rotate(nav.quat());
+
         g.translate(renderPose.get().pos());
         g.rotate(renderPose.get().quat());
         g.scale(renderScale.get());

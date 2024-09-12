@@ -165,12 +165,14 @@ struct SensoriumApp : public DistributedAppWithState<State> {
           sequencer.playSequence("sensorium");
         }
       }
+      if(k.key() == 'p'){
+        nav().print();
+      }
     }
     return true;
   }
 
   // bool onKeyDown(const Keyboard &k) override {
-  //   switch (k.key()) {
   //   case '1':
   //     oceanDataViewer.setGeoTarget(53.54123998879464, 9.950943100405375, 3.2, 4.0);
   //     return true;
