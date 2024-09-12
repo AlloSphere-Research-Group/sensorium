@@ -103,7 +103,7 @@ struct AudioPlayer {
         for (int i = 16; i < 31; i++)
           io.out(i) = l * AudioVolume * 0.4;
 
-        io.out(24) = s * AudioVolume * 0.8;
+        io.out(24) = s * AudioVolume * 0.4;
 
         for (int i = 31; i < 46; i++)
           io.out(i) = r * AudioVolume * 0.4;
@@ -111,7 +111,7 @@ struct AudioPlayer {
         for (int i = 49; i <= 60; i++)
           io.out(i) = r * AudioVolume * 0.4;
 
-        io.out(39) = s * AudioVolume * 0.8;
+        io.out(39) = s * AudioVolume * 0.4;
         // io.out(48) = (l + r) * SubVolume * 0.5;
         io.out(47) = (l + r) * SubVolume * 0.5;
       } else {
