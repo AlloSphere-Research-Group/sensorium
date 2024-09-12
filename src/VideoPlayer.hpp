@@ -56,12 +56,9 @@ struct VideoPlayer {
 
   const std::string pano_frag = R"(
   #version 330
-  uniform sampler2D tex0Y;
-  uniform sampler2D tex0U;
-  uniform sampler2D tex0V;
-  uniform sampler2D tex1Y;
-  uniform sampler2D tex1U;
-  uniform sampler2D tex1V;
+  uniform sampler2D texY;
+  uniform sampler2D texU;
+  uniform sampler2D texV;
   uniform float blend0;
   uniform float blend1;
   uniform float brightness;
@@ -82,19 +79,8 @@ struct VideoPlayer {
     rgba0.b = yuv0.r + 2.018 * yuv0.g;
     rgba0.a = 1.0;
 
-    vec3 yuv1;
-    yuv1.r = texture(tex1Y, texcoord_).r - 0.0625;
-    yuv1.g = texture(tex1U, texcoord_).r - 0.5;
-    yuv1.b = texture(tex1V, texcoord_).r - 0.5;
-
-    vec4 rgba1;
-    rgba1.r = yuv1.r + 1.596 * yuv1.b;
-    rgba1.g = yuv1.r - 0.813 * yuv1.b - 0.391 * yuv1.g;
-    rgba1.b = yuv1.r + 2.018 * yuv1.g;
-    rgba1.a = 1.0;
-
-    vec4 c0 = blend0 * rgba0;
-    vec4 c1 = blend1 * rgba1;
+    vec4 c0 = blend0 * vec4(0);
+    vec4 c1 = blend1 * rgba0;
     frag_color = brightness * (c0 + c1);
   }
   )";
@@ -149,14 +135,11 @@ struct VideoPlayer {
 
   ShaderProgram pano_shader;
 
-  Texture tex0Y, tex0U, tex0V;
-  Texture tex1Y, tex1U, tex1V;
+  Texture texY, texU, texV;
   VAOMesh quad, sphere;
 
   std::unique_ptr<VideoDecoder> videoDecoder;
-  std::unique_ptr<VideoDecoder> videoDecoderNext;
   bool loadVideo{false};
-  bool doSwapVideo{false};
 
   std::string dataPath;
 
@@ -187,12 +170,12 @@ struct VideoPlayer {
     *gui << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
     *gui << playWater << playAerialImages << playSF;
     *gui << playBoardwalk << playCoral;
-    *gui << playOverfishing << playAcidification << playBoat << swapVideo;
+    *gui << playOverfishing << playAcidification << playBoat;
     *gui << renderPose << renderScale;
 
     presets << renderVideoInSim << playingVideo << brightness << blend0
             << blend1;
-    seq << videoToLoad << blend0 << blend1 << swapVideo << playingVideo;
+    seq << videoToLoad << blend0 << blend1 << playingVideo;
     seq << playBoardwalk << playCoral << playOverfishing << playAerialImages
         << playAcidification << playSF << playBoat
         << playWater; //<< renderPose << renderScale;
@@ -247,60 +230,31 @@ struct VideoPlayer {
   void loadVideoFile(State &state, bool isPrimary) {
     std::string path = dataPath + videoToLoad.get();
 
-    if (videoDecoderNext != nullptr) {
-      videoDecoderNext->stop();
-      videoDecoderNext.reset(nullptr);
-    }
-    videoDecoderNext = std::make_unique<VideoDecoder>();
-    videoDecoderNext->enableAudio(false);
-
-    if (!videoDecoderNext->load(path.c_str())) {
-      std::cerr << "Error loading video file: " << path << std::endl;
-    }
-    loadVideo = false;
-
-    videoDecoderNext->start();
-
-    tex1Y.create2D(videoDecoderNext->lineSize()[0], videoDecoderNext->height(),
-                   Texture::RED, Texture::RED, Texture::UBYTE);
-    tex1U.create2D(videoDecoderNext->lineSize()[1],
-                   videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
-                   Texture::UBYTE);
-    tex1V.create2D(videoDecoderNext->lineSize()[2],
-                   videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
-                   Texture::UBYTE);
-
-    if (isPrimary)
-      state.global_clock_next = 0.0;
-  };
-
-  // void playVideo(){
-  //   videoDecoderNext->start();
-  // }
-
-  void swapNextVideo(State &state, bool isPrimary) {
     if (videoDecoder != nullptr) {
       videoDecoder->stop();
       videoDecoder.reset(nullptr);
     }
-    if (videoDecoderNext != nullptr) {
-      tex0Y.create2D(videoDecoderNext->lineSize()[0],
-                     videoDecoderNext->height(), Texture::RED, Texture::RED,
-                     Texture::UBYTE);
-      tex0U.create2D(videoDecoderNext->lineSize()[1],
-                     videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
-                     Texture::UBYTE);
-      tex0V.create2D(videoDecoderNext->lineSize()[2],
-                     videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
-                     Texture::UBYTE);
+    videoDecoder = std::make_unique<VideoDecoder>();
+    videoDecoder->enableAudio(false);
 
-      videoDecoder.swap(videoDecoderNext);
-      videoDecoderNext.reset(nullptr);
-      if (isPrimary)
-        state.global_clock = state.global_clock_next;
+    if (!videoDecoder->load(path.c_str())) {
+      std::cerr << "Error loading video file: " << path << std::endl;
+      return;
     }
-    doSwapVideo = false;
-  }
+    loadVideo = false;
+
+    videoDecoder->start();
+
+    texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
+                  Texture::RED, Texture::RED, Texture::UBYTE);
+    texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
+                  Texture::RED, Texture::RED, Texture::UBYTE);
+    texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
+                  Texture::RED, Texture::RED, Texture::UBYTE);
+
+    if (isPrimary)
+      state.global_clock_next = 0.0;
+  };
 
   void onInit() {}
 
@@ -318,30 +272,21 @@ struct VideoPlayer {
     // compile & initialize shader
     pano_shader.compile(pano_vert, pano_frag);
     pano_shader.begin();
-    pano_shader.uniform("tex0Y", 0);
-    pano_shader.uniform("tex0U", 1);
-    pano_shader.uniform("tex0V", 2);
-    pano_shader.uniform("tex1Y", 3);
-    pano_shader.uniform("tex1U", 4);
-    pano_shader.uniform("tex1V", 5);
+    pano_shader.uniform("texY", 0);
+    pano_shader.uniform("texU", 1);
+    pano_shader.uniform("texV", 2);
     pano_shader.uniform("blend0", 1.0);
     pano_shader.uniform("blend1", 1.0);
     pano_shader.uniform("brightness", 1.0);
     pano_shader.end();
 
     // generate texture
-    tex0Y.filter(Texture::LINEAR);
-    tex0Y.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex0U.filter(Texture::LINEAR);
-    tex0U.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex0V.filter(Texture::LINEAR);
-    tex0V.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex1Y.filter(Texture::LINEAR);
-    tex1Y.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex1U.filter(Texture::LINEAR);
-    tex1U.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-    tex1V.filter(Texture::LINEAR);
-    tex1V.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    texY.filter(Texture::LINEAR);
+    texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    texU.filter(Texture::LINEAR);
+    texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+    texV.filter(Texture::LINEAR);
+    texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
 
     // generate mesh
     addTexRect(quad, -1, 1, 2, -2);
@@ -361,11 +306,8 @@ struct VideoPlayer {
 
     if (loadVideo)
       loadVideoFile(state, isPrimary);
-    if (doSwapVideo)
-      swapNextVideo(state, isPrimary);
 
     if (isPrimary) {
-
       if (state.videoPlaying) {
         state.global_clock += dt;
         state.global_clock_next += dt;
@@ -377,26 +319,13 @@ struct VideoPlayer {
       if (videoDecoder != nullptr) {
         frame = videoDecoder->getVideoFrame(state.global_clock);
         if (frame) {
-          tex0Y.submit(frame->dataY.data());
-          tex0U.submit(frame->dataU.data());
-          tex0V.submit(frame->dataV.data());
+          texY.submit(frame->dataY.data());
+          texU.submit(frame->dataU.data());
+          texV.submit(frame->dataV.data());
           videoDecoder->gotVideoFrame();
         } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
           state.global_clock = 0;
           videoDecoder->seek(0);
-        }
-      }
-      if (videoDecoderNext != nullptr) {
-        frame = videoDecoderNext->getVideoFrame(state.global_clock_next);
-        if (frame) {
-          tex1Y.submit(frame->dataY.data());
-          tex1U.submit(frame->dataU.data());
-          tex1V.submit(frame->dataV.data());
-          videoDecoderNext->gotVideoFrame();
-        } else if (videoDecoderNext->finished() &&
-                   videoDecoderNext->isLooping()) {
-          state.global_clock_next = 0;
-          videoDecoderNext->seek(0);
         }
       }
     }
@@ -417,22 +346,16 @@ struct VideoPlayer {
         g.shader().uniform("brightness", brightness);
         g.shader().uniform("blend0", blend0);
         g.shader().uniform("blend1", blend1);
-        tex0Y.bind(0);
-        tex0U.bind(1);
-        tex0V.bind(2);
-        tex1Y.bind(3);
-        tex1U.bind(4);
-        tex1V.bind(5);
+        texY.bind(0);
+        texU.bind(1);
+        texV.bind(2);
         g.translate(renderPose.get().pos());
         g.rotate(renderPose.get().quat());
         g.scale(renderScale.get());
         g.draw(sphere);
-        tex0Y.unbind(0);
-        tex0U.unbind(1);
-        tex0V.unbind(2);
-        tex1Y.unbind(3);
-        tex1U.unbind(4);
-        tex1V.unbind(5);
+        texY.unbind(0);
+        texU.unbind(1);
+        texV.unbind(2);
 
         g.popMatrix();
       }

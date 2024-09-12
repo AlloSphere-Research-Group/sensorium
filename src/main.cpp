@@ -7,9 +7,9 @@
 #include "al_ext/statedistribution/al_CuttleboneDomain.hpp"
 
 #include "AppState.hpp"
+#include "AudioPlayer.hpp"
 #include "OceanDataViewer.hpp"
 #include "VideoPlayer.hpp"
-#include "AudioPlayer.hpp"
 
 using namespace al;
 
@@ -34,7 +34,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   std::map<std::string, WatchedFile> watchedFiles;
   al_sec watchCheckTime;
 
-
   void onInit() override {
 
     searchPaths.addSearchPath(".", false);
@@ -51,7 +50,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     // server.handler(oscDomain()->handler());
     // server.start();
 
-    if(isPrimary() && al::sphere::isSphereMachine()){
+    if (isPrimary() && al::sphere::isSphereMachine()) {
       audioIO().channelsOut(70);
       audioIO().print();
     }
@@ -60,14 +59,15 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onInit();
     audioPlayer.onInit();
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale << videoPlayer.videoToLoad << videoPlayer.brightness << videoPlayer.blend0 << videoPlayer.blend1 << videoPlayer.swapVideo << oceanDataViewer.blend;
-
+    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale
+                      << videoPlayer.videoToLoad << videoPlayer.brightness
+                      << videoPlayer.blend0 << videoPlayer.blend1
+                      << oceanDataViewer.blend;
   }
 
-  void reloadShaders() { 
+  void reloadShaders() {
     loadShader(oceanDataViewer.shaderDataset, "tex.vert", "colormap.frag");
   }
-
 
   void onCreate() override {
 
@@ -75,18 +75,17 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     nav().pos(0, 0, -15);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
-    navControl().vscale(0.125*0.1*0.5);
-    navControl().tscale(2*0.1*0.5);
+    navControl().vscale(0.125 * 0.1 * 0.5);
+    navControl().tscale(2 * 0.1 * 0.5);
 
     oceanDataViewer.onCreate();
 
     // std::thread thread([&] {
     oceanDataViewer.loadChiData();
     // });
-    // thread.detach(); 
+    // thread.detach();
 
     videoPlayer.onCreate(state(), isPrimary());
-
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
@@ -96,7 +95,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       gui = &guiDomain->newGUI();
 
-      oceanDataViewer.registerParams(gui, presets, sequencer, recorder, nav(), state());
+      oceanDataViewer.registerParams(gui, presets, sequencer, recorder, nav(),
+                                     state());
       videoPlayer.registerParams(gui, presets, sequencer, recorder, state());
       audioPlayer.registerParams(gui, presets, sequencer, state());
 
@@ -107,10 +107,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.videoToLoad.registerChangeCallback([&](std::string value) {
       std::cout << "loading file to videoDecoderNext: " << value << std::endl;
       videoPlayer.loadVideo = true;
-    });
-    videoPlayer.swapVideo.registerChangeCallback([&](float value) {
-      std::cout << "swap video to videoDecode" << std::endl;
-      videoPlayer.doSwapVideo = true;
     });
     // enable if parameter needs to be shared
     // parameterServer() << lat << lon << radius;
@@ -130,16 +126,15 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     videoPlayer.onAnimate(dt, state(), isPrimary());
   }
 
-  void onSound(AudioIOData &io) override { 
-    // oceanDataViewer.onSound(io); 
+  void onSound(AudioIOData &io) override {
+    // oceanDataViewer.onSound(io);
     audioPlayer.onSound(io);
   }
 
-
   void onDraw(Graphics &g) override {
-    if(!state().videoPlaying)
+    if (!state().videoPlaying)
       oceanDataViewer.onDraw(g, nav(), state());
-    
+
     videoPlayer.onDraw(g, nav(), state(), isPrimary());
   }
 
@@ -156,12 +151,13 @@ struct SensoriumApp : public DistributedAppWithState<State> {
         std::cout << "Recalling preset:" << presetName << std::endl;
       }
       if (k.key() == ' ') {
-        // Notice that you don't need to add the extension ".sequence" to the name
+        // Notice that you don't need to add the extension ".sequence" to the
+        // name
         sequencer.setVerbose(true);
-        if(sequencer.running()){
+        if (sequencer.running()) {
           sequencer.stopSequence("sensorium");
           videoPlayer.playingVideo = false;
-        }else{
+        } else {
           sequencer.playSequence("sensorium");
         }
       }
@@ -175,8 +171,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   //     oceanDataViewer.setGeoTarget(53.54123998879464, 9.950943100405375, 3.2, 4.0);
   //     return true;
   //   case '2':
-  //     oceanDataViewer.setGeoTarget(54.40820774011447, 12.593582740321027, 3.2, 4.0);
-  //     return true;
+  //     oceanDataViewer.setGeoTarget(54.40820774011447, 12.593582740321027, 3.2,
+  //     4.0); return true;
   //   case '3':
   //     oceanDataViewer.setGeoTarget(53.91580380807132, 9.531183185073399, 3.2, 4.0);
   //     return true;
@@ -214,8 +210,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   // void onMessage(osc::Message& m) override {
   // }
-
-
 
   //// shader utils
   void watchFile(std::string path) {
@@ -265,8 +259,6 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     std::string fp = loadGlsl(fp_filename);
     program.compile(vp, fp);
   }
-
-
 };
 
 int main() {
