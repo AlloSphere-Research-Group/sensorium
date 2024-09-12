@@ -68,19 +68,19 @@ struct VideoPlayer {
 
   // can apply filters here
   void main() {
-    vec3 yuv0;
-    yuv0.r = texture(tex0Y, texcoord_).r - 0.0625;
-    yuv0.g = texture(tex0U, texcoord_).r - 0.5;
-    yuv0.b = texture(tex0V, texcoord_).r - 0.5;
+    vec3 yuv;
+    yuv.r = texture(texY, texcoord_).r - 0.0625;
+    yuv.g = texture(texU, texcoord_).r - 0.5;
+    yuv.b = texture(texV, texcoord_).r - 0.5;
 
-    vec4 rgba0;
-    rgba0.r = yuv0.r + 1.596 * yuv0.b;
-    rgba0.g = yuv0.r - 0.813 * yuv0.b - 0.391 * yuv0.g;
-    rgba0.b = yuv0.r + 2.018 * yuv0.g;
-    rgba0.a = 1.0;
+    vec4 rgba;
+    rgba.r = yuv.r + 1.596 * yuv.b;
+    rgba.g = yuv.r - 0.813 * yuv.b - 0.391 * yuv.g;
+    rgba.b = yuv.r + 2.018 * yuv.g;
+    rgba.a = 1.0;
 
     vec4 c0 = blend0 * vec4(0);
-    vec4 c1 = blend1 * rgba0;
+    vec4 c1 = blend1 * rgba;
     frag_color = brightness * (c0 + c1);
   }
   )";
