@@ -598,7 +598,7 @@ struct OceanDataViewer {
     // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
 
     // 5. Fishing demersal low
-    loadChiDataset("chi/fish/fdl_10_", "_impact.png", 4);
+    loadChiDataset("chi/fish/fph_100_", "_impact.png", 4);
     // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
 
     // 6. Fishing demersal high

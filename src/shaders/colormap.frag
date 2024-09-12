@@ -60,7 +60,9 @@ void main() {
   
   if(mapFunction == 4){ // fishing
   //   // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
-    hsv = vec3(log(pixel.r / (90./255.) + 1), 0.9, 1);
+    // hsv = vec3(log(pixel.r / (90./255.) + 1), 0.9, 1);
+    // hsv = vec3(0.5 + log(pixel.r / (90./255.) + 1), 0.9, 1);
+    hsv = vec3(0.85 + pixel.r, 0.9, 1);
     alpha = pixel.r * 10;
   // data_color = HSV(log(pixel.r / 90. + 1), 0.9, 1);
   // }else if(mapFunction >= 9 && mapFunction <= 11){ // 9,10,11
@@ -71,7 +73,7 @@ void main() {
   //   // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60);
     hsv = vec3(1. - log(pixel.r / (30./255.) + 1), 0.6 + pixel.r / (100./255.), 0.6 + pixel.r / (60./255.));
     alpha = pixel.r + hsv.b;
-    alpha *= alpha;
+    alpha *= alpha/4;
   } else if(mapFunction == 6){ // acidification
   //   // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1);
     hsv = vec3(0.7 - 0.6 * log(pixel.r / (100./255.) + 1), 0.5 + log(pixel.r / (100./255.) + 1.), 1.);
@@ -79,7 +81,7 @@ void main() {
     alpha *= alpha * alpha;
   } else if(mapFunction == 7){ // sea level rise
     // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
-    hsv = vec3(0.55 + 0.3 * log(pixel.r / (100./255.) + 1), 0.6 + log(pixel.r / (60./255.) + 1.), 0.6 + log(pixel.r / (60./255.) + 1.));
+    hsv = vec3(0.65 + 0.3 * log(pixel.r / (100./255.) + 1), 0.6 + log(pixel.r / (60./255.) + 1.), 0.6 + log(pixel.r / (60./255.) + 1.));
     alpha = pixel.r * 5;
     alpha *= alpha;
   }
