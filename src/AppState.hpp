@@ -1,8 +1,8 @@
- 
+
 #ifndef APPSTATE_HPP
 #define APPSTATE_HPP
 
-static const int chiyears = 11;       // Total number of years (2003~2013)
+static const int chiyears = 11;    // Total number of years (2003~2013)
 static const int years = 12;       // Total number of years (2012~2023)
 static const int stressors = 12;   // Total number of stressors
 static const int num_cloud = 3;    // Total number of stressors
@@ -13,7 +13,6 @@ struct State {
   // video player
   bool videoPlaying;
   double global_clock;
-  double global_clock_next;
   double co2_clock;
 
   // ocean data viewer
@@ -33,6 +32,5 @@ struct State {
   al::Vec3f render_co2_pos[500];
   al::Color render_co2_col[500];
 };
-
 
 #endif

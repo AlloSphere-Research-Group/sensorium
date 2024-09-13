@@ -183,8 +183,6 @@ struct VideoPlayer {
     // these change callbacks should run only on primary
     playingVideo.registerChangeCallback([&](float value) {
       if (value == 1.0) {
-        // state.global_clock = 0.0;
-        // state.global_clock_next = 0.0;
         state.videoPlaying = true;
       } else {
         state.videoPlaying = false;
@@ -253,7 +251,7 @@ struct VideoPlayer {
                   Texture::RED, Texture::RED, Texture::UBYTE);
 
     if (isPrimary)
-      state.global_clock_next = 0.0;
+      state.global_clock = 0.0;
   };
 
   void onInit() {}
@@ -297,7 +295,6 @@ struct VideoPlayer {
 
     if (isPrimary) {
       state.global_clock = 0;
-      state.global_clock_next = 0;
       state.videoPlaying = false;
     }
   }
@@ -310,7 +307,6 @@ struct VideoPlayer {
     if (isPrimary) {
       if (state.videoPlaying) {
         state.global_clock += dt;
-        state.global_clock_next += dt;
       }
     }
 
