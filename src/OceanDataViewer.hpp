@@ -9,7 +9,6 @@
 #include "al/graphics/al_Light.hpp"
 #include "al/graphics/al_Shapes.hpp"
 
-
 #include "Gamma/Filter.h"
 #include "Gamma/Noise.h"
 #include "Gamma/Oscillator.h"
@@ -28,7 +27,7 @@ struct OceanDataViewer {
     float lon;
     float radius;
   };
-  
+
   Parameter lat{"lat", "Nav", 0.0, -90.0, 90.0};
   Parameter lon{"lon", "Nav", 0.0, -180.0, 180.0};
   Parameter radius{"radius", "Nav", 5.0, 0.0, 50.0};
@@ -36,7 +35,7 @@ struct OceanDataViewer {
   ParameterPose camPose{"camPose", "Nav"};
   ParameterBool animateCam{"animateCam", "Nav", 0.0};
   ParameterBool faceTo{"Face_Center", "Nav", 1.0};
- 
+
   Parameter lux{"Light", 0.6, 0, 2.5};
   Parameter blend{"blend", "", 1.0, 0.0, 1.0};
 
@@ -46,7 +45,6 @@ struct OceanDataViewer {
   // Parameter frame{"CO2 Year", 0, 0, frames - 1};
 
   Parameter gain{"Audio", "Sound", 0, 0, 2};
-
 
   ParameterBool s_shp{"Shipping", "", 0.0};
   ParameterBool s_carbon{"Ocean_Carbon", "", 0.0};
@@ -67,7 +65,6 @@ struct OceanDataViewer {
   ParameterBool s_years{"CycleYears", "", 0.0};
   // ParameterBool s_chiyears{"2003_2013", "", 0.0};
   // ParameterBool s_frames{"CO2 Play", "", 0.0};
-
 
   // video textures
   Texture tex0Y, tex0U, tex0V;
@@ -134,8 +131,7 @@ struct OceanDataViewer {
     return returnValue;
   }
 
-  void onInit() {
-  }
+  void onInit() {}
 
   void onCreate() {
 
@@ -185,8 +181,6 @@ struct OceanDataViewer {
     reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
     reverb.damping(0.5f);   // High-frequency damping, in [0,1]
     reverb.decay(0.6f);     // Tail decay factor, in [0,1]
-
-
   }
 
   void onAnimate(double dt, Nav &nav, State &state, bool isPrimary) {
@@ -241,7 +235,6 @@ struct OceanDataViewer {
       pos.normalize();
       lat.setNoCalls(asin(pos.y) * 180.0 / M_PI);
       lon.setNoCalls(atan2(-pos.x, -pos.z) * 180.0 / M_PI);
-
 
       // Set light position
       light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
@@ -319,7 +312,6 @@ struct OceanDataViewer {
     shaderDataset.uniform("isVideo", 0);
     shaderDataset.uniform("mapFunction", -1);
 
-
     gl::depthFunc(GL_LEQUAL);
     g.culling(false);
     // g.lighting(true);
@@ -347,7 +339,7 @@ struct OceanDataViewer {
       g.pushMatrix();
       g.scale(-1, 1, 1);
       g.draw(sphereMesh); // only needed if we go inside the earth
-    } else { // outside
+    } else {              // outside
       g.draw(sphereMesh);
     }
     sphereTex.unbind();
@@ -357,12 +349,11 @@ struct OceanDataViewer {
     // g.blending(true);
     // g.blendTrans();
 
-
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
         int offset = 2013;
         float year = state.year;
-        if(j >= 4){
+        if (j >= 4) {
           offset = 2003;
           year = state.chiyear;
         }
@@ -391,15 +382,12 @@ struct OceanDataViewer {
       if (state.cloud_swtch[j]) {
         cloud[j].bind();
         g.draw(sphereMesh);
-
       }
     }
 
     if (nav.pos().mag() < 2.01f) {
       g.popMatrix(); // pop from push above
     }
-
-   
   }
 
   void onSound(AudioIOData &io) {
@@ -436,8 +424,8 @@ struct OceanDataViewer {
     std::string displayText = "AlloOcean. Ocean stressor (2012-2023)";
     // "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)"
     *gui << lat << lon << radius << blend; // << lux << year << gain;
-    *gui << year << chiyear; // << frame;
-    *gui << s_years; // << s_frames;
+    *gui << year << chiyear;               // << frame;
+    *gui << s_years;                       // << s_frames;
     *gui << s_nav << faceTo << animateCam;
     *gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
     *gui << s_fish << s_shp << s_plastics << s_resiliency;
@@ -459,21 +447,17 @@ struct OceanDataViewer {
     seq << s_fish << s_plastics << s_resiliency;
     seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
 
-
     camPose.registerChangeCallback([&](Pose p) { nav.set(p); });
     llr.registerChangeCallback([&](Vec3f v) { setGeoTarget(v.x, v.y, v.z); });
 
-    lat.registerChangeCallback([&](float value) {
-      setGeoTarget(value, lon, radius);
-    });
+    lat.registerChangeCallback(
+        [&](float value) { setGeoTarget(value, lon, radius); });
 
-    lon.registerChangeCallback([&](float value) {
-      setGeoTarget(lat, value, radius);
-    });
+    lon.registerChangeCallback(
+        [&](float value) { setGeoTarget(lat, value, radius); });
 
-    radius.registerChangeCallback([&](float value) {
-      setGeoTarget(lat, lon, value);
-    });
+    radius.registerChangeCallback(
+        [&](float value) { setGeoTarget(lat, lon, value); });
 
     s_years.registerChangeCallback([&](int value) {
       if (value) {
@@ -514,12 +498,14 @@ struct OceanDataViewer {
     }
   }
 
-  void loadChiDataset(std::string prefix, std::string postfix, int stressorIndex) {
+  void loadChiDataset(std::string prefix, std::string postfix,
+                      int stressorIndex) {
     Image oceanData;
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < chiyears; d++) {
       ostringstream ostr;
-      ostr << dataPath << prefix << d + 2003 << postfix;; 
+      ostr << dataPath << prefix << d + 2003 << postfix;
+      ;
       oceanData = Image(ostr.str());
 
       pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
@@ -551,7 +537,6 @@ struct OceanDataViewer {
                    Texture::RED, Texture::RED, Texture::UBYTE);
     tex0V.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
                    Texture::RED, Texture::RED, Texture::UBYTE);
-
   }
 
   void loadChiData() {
@@ -575,27 +560,30 @@ struct OceanDataViewer {
     // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 +
     // pixel.r / 90);
 
- 
-
     // 0. SST
     // loadChiDataset("chi/sst/sst_05_", 0);
-    // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6 + atan(pixel.r / 300));
+    // data_color = HSV(0.55 + log(pixel.r / 90. + 1), 0.65 + pixel.r / 60, 0.6
+    // + atan(pixel.r / 300));
 
     // 1. Nutrients
     // loadChiDataset("chi/nutrient/nutrient_pollution_impact_5_", 1);
-    // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 + pixel.r / 90);
+    // data_color = HSV(0.3 - log(pixel.r / 60. + 1), 0.9 + pixel.r / 90, 0.9 +
+    // pixel.r / 90);
 
     // 2. Shipping
     loadChiDataset("chi/ship/ship_impact_10_", "_equi.png", 5);
-    // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 + pixel.r / 60);
+    // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 +
+    // pixel.r / 60);
 
     // 3. Ocean Acidification
     loadChiDataset("chi/oa/oa_10_", "_impact.png", 6);
-    // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r / 100. + 1), 1);
+    // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r /
+    // 100. + 1), 1);
 
     // 4. Sea level rise
     loadChiDataset("chi/slr/slr_impact_5_", "_equi.png", 7);
-    // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
+    // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r
+    // / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
 
     // 5. Fishing demersal low
     loadChiDataset("chi/fish/fph_100_", "_impact.png", 4);
@@ -625,9 +613,10 @@ struct OceanDataViewer {
     // loadChiDataset("chi/chi/cumulative_impact_10_", 11);
     // data_color = HSV(log(pixel.r / 120. + 1), 0.9, 1);
 
-
     // Co2 Video data
-    loadCO2Dataset("co2/SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
+    loadCO2Dataset(
+        "co2/"
+        "SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
 
     std::cout << "Loaded Ocean data." << std::endl;
   }

@@ -232,8 +232,8 @@ struct VideoPlayer {
 
     if (videoDecoder != nullptr) {
       videoDecoder->stop();
-      videoDecoder.reset(nullptr);
     }
+
     videoDecoder = std::make_unique<VideoDecoder>();
     videoDecoder->enableAudio(false);
 

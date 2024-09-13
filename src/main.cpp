@@ -71,6 +71,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   void onCreate() override {
 
+    // lens().fovy(45).eyeSep(0);
     lens().near(0.01).fovy(45).eyeSep(0);
     nav().pos(0, 0, -15);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
@@ -105,7 +106,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     }
 
     videoPlayer.videoToLoad.registerChangeCallback([&](std::string value) {
-      std::cout << "loading file to videoDecoderNext: " << value << std::endl;
+      std::cout << "loading video file: " << value << std::endl;
       videoPlayer.loadVideo = true;
     });
     // enable if parameter needs to be shared
