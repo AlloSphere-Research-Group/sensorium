@@ -59,7 +59,6 @@ struct VideoPlayer {
   uniform sampler2D texY;
   uniform sampler2D texU;
   uniform sampler2D texV;
-  uniform float blend0;
   uniform float blend1;
   uniform float brightness;
 
@@ -79,9 +78,8 @@ struct VideoPlayer {
     rgba.b = yuv.r + 2.018 * yuv.g;
     rgba.a = 1.0;
 
-    vec4 c0 = blend0 * vec4(0);
     vec4 c1 = blend1 * rgba;
-    frag_color = brightness * (c0 + c1);
+    frag_color = brightness * c1;
   }
   )";
 
@@ -230,9 +228,12 @@ struct VideoPlayer {
 
     if (videoDecoder != nullptr) {
       videoDecoder->stop();
+      std::cout << "stopped" << std::endl;
     }
 
+    std::cout << "before deconst" << std::endl;
     videoDecoder = std::make_unique<VideoDecoder>();
+    std::cout << "after const" << std::endl;
     videoDecoder->enableAudio(false);
 
     if (!videoDecoder->load(path.c_str())) {
@@ -241,7 +242,11 @@ struct VideoPlayer {
     }
     loadVideo = false;
 
+    std::cout << "before start" << std::endl;
+
     videoDecoder->start();
+
+    std::cout << "after start" << std::endl;
 
     texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
                   Texture::RED, Texture::RED, Texture::UBYTE);
@@ -273,7 +278,7 @@ struct VideoPlayer {
     pano_shader.uniform("texY", 0);
     pano_shader.uniform("texU", 1);
     pano_shader.uniform("texV", 2);
-    pano_shader.uniform("blend0", 1.0);
+    // pano_shader.uniform("blend0", 1.0);
     pano_shader.uniform("blend1", 1.0);
     pano_shader.uniform("brightness", 1.0);
     pano_shader.end();
@@ -340,7 +345,7 @@ struct VideoPlayer {
         g.pushMatrix();
         g.shader(pano_shader);
         g.shader().uniform("brightness", brightness);
-        g.shader().uniform("blend0", blend0);
+        // g.shader().uniform("blend0", blend0);
         g.shader().uniform("blend1", blend1);
         texY.bind(0);
         texU.bind(1);

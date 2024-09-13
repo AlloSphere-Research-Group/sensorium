@@ -71,8 +71,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   void onCreate() override {
 
-    // lens().fovy(45).eyeSep(0);
-    lens().near(0.01).fovy(45).eyeSep(0);
+    lens().fovy(45).eyeSep(0);
+    // lens().near(0.01).fovy(45).eyeSep(0);
     nav().pos(0, 0, -15);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
