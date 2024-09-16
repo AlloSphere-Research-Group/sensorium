@@ -228,12 +228,9 @@ struct VideoPlayer {
 
     if (videoDecoder != nullptr) {
       videoDecoder->stop();
-      std::cout << "stopped" << std::endl;
     }
 
-    std::cout << "before deconst" << std::endl;
     videoDecoder = std::make_unique<VideoDecoder>();
-    std::cout << "after const" << std::endl;
     videoDecoder->enableAudio(false);
 
     if (!videoDecoder->load(path.c_str())) {
@@ -242,11 +239,7 @@ struct VideoPlayer {
     }
     loadVideo = false;
 
-    std::cout << "before start" << std::endl;
-
     videoDecoder->start();
-
-    std::cout << "after start" << std::endl;
 
     texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
                   Texture::RED, Texture::RED, Texture::UBYTE);
