@@ -2,6 +2,8 @@
 #ifndef VIDEO_PLAYER_HPP
 #define VIDEO_PLAYER_HPP
 
+#include <memory>
+
 #include "al/sound/al_SpeakerAdjustment.hpp"
 #include "al/sphere/al_SphereUtils.hpp"
 #include "al_ext/video/al_VideoDecoder.hpp"
@@ -151,8 +153,8 @@ struct VideoPlayer {
   Texture tex1Y, tex1U, tex1V;
   VAOMesh quad, sphere;
 
-  VideoDecoder *videoDecoder{NULL};
-  VideoDecoder *videoDecoderNext{NULL};
+  std::unique_ptr<VideoDecoder> videoDecoder;
+  std::unique_ptr<VideoDecoder> videoDecoderNext;
   bool loadVideo{false};
   bool doSwapVideo{false};
 
@@ -245,11 +247,11 @@ struct VideoPlayer {
   void loadVideoFile(State &state, bool isPrimary) {
     std::string path = dataPath + videoToLoad.get();
 
-    if (videoDecoderNext != NULL) {
+    if (videoDecoderNext != nullptr) {
       videoDecoderNext->stop();
-      videoDecoderNext = NULL;
+      videoDecoderNext.reset(nullptr);
     }
-    videoDecoderNext = new VideoDecoder();
+    videoDecoderNext = std::make_unique<VideoDecoder>();
     videoDecoderNext->enableAudio(false);
 
     if (!videoDecoderNext->load(path.c_str())) {
@@ -277,11 +279,11 @@ struct VideoPlayer {
   // }
 
   void swapNextVideo(State &state, bool isPrimary) {
-    if (videoDecoder != NULL) {
+    if (videoDecoder != nullptr) {
       videoDecoder->stop();
-      videoDecoder = NULL;
+      videoDecoder.reset(nullptr);
     }
-    if (videoDecoderNext != NULL) {
+    if (videoDecoderNext != nullptr) {
       tex0Y.create2D(videoDecoderNext->lineSize()[0],
                      videoDecoderNext->height(), Texture::RED, Texture::RED,
                      Texture::UBYTE);
@@ -292,8 +294,8 @@ struct VideoPlayer {
                      videoDecoderNext->height() / 2, Texture::RED, Texture::RED,
                      Texture::UBYTE);
 
-      videoDecoder = videoDecoderNext;
-      videoDecoderNext = NULL;
+      videoDecoder.swap(videoDecoderNext);
+      videoDecoderNext.reset(nullptr);
       if (isPrimary)
         state.global_clock = state.global_clock_next;
     }
@@ -372,7 +374,7 @@ struct VideoPlayer {
 
     if (state.videoPlaying) {
       MediaFrame *frame;
-      if (videoDecoder != NULL) {
+      if (videoDecoder != nullptr) {
         frame = videoDecoder->getVideoFrame(state.global_clock);
         if (frame) {
           tex0Y.submit(frame->dataY.data());
@@ -384,7 +386,7 @@ struct VideoPlayer {
           videoDecoder->seek(0);
         }
       }
-      if (videoDecoderNext != NULL) {
+      if (videoDecoderNext != nullptr) {
         frame = videoDecoderNext->getVideoFrame(state.global_clock_next);
         if (frame) {
           tex1Y.submit(frame->dataY.data());
