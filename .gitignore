@@ -1,18 +1,17 @@
-# don't ignore `bin` anywhere in folder tree
-!**/bin
-# but ignore things inside folder named bin
-**/bin/*
-# while not ignoring things inside bin/data
-!**/bin/data
-
-**/frames/*
-
-# anything named build
+# directories to ignore
+bin
 build
+data
+presets
+.vscode
 
+# configuration files
+imgui.ini
+
+# ignore potentially big files
 *.log
-
-
+*.png
+*.PNG
 *.gif
 *.GIF
 *.jpg
@@ -25,5 +24,3 @@ build
 *.BMP
 *.bin
 *.binary
-
-apps/

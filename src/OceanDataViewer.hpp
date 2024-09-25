@@ -571,17 +571,20 @@ struct OceanDataViewer {
     // pixel.r / 90);
 
     // 2. Shipping
-    loadChiDataset("chi/ship/ship_impact_10_", "_equi.png", 5);
+    // loadChiDataset("chi/ship/ship_impact_10_", "_equi.png", 5);
+    loadChiDataset("ship/shipping_", "_impact.png", 5);
     // data_color = HSV(1 - log(pixel.r / 30. + 1), 0.6 + pixel.r / 100, 0.6 +
     // pixel.r / 60);
 
     // 3. Ocean Acidification
-    loadChiDataset("chi/oa/oa_10_", "_impact.png", 6);
+    // loadChiDataset("chi/oa/oa_10_", "_impact.png", 6);
+    loadChiDataset("oa/oa_", "_impact.png", 6);
     // data_color = HSV(0.7 - 0.6 * log(pixel.r / 100. + 1), 0.5 + log(pixel.r /
     // 100. + 1), 1);
 
     // 4. Sea level rise
-    loadChiDataset("chi/slr/slr_impact_5_", "_equi.png", 7);
+    // loadChiDataset("chi/slr/slr_impact_5_", "_equi.png", 7);
+    loadChiDataset("slr/slr_", "_impact.png", 7);
     // data_color = HSV(0.6 + 0.2 * log(pixel.r / 100. + 1), 0.6 + log(pixel.r
     // / 60. + 1), 0.6 + log(pixel.r / 60. + 1));
 
