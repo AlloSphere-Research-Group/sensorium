@@ -66,7 +66,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
   }
 
   void reloadShaders() {
+    loadShader(oceanDataViewer.shaderSphere, "tex.vert", "sphere.frag");
     loadShader(oceanDataViewer.shaderDataset, "tex.vert", "colormap.frag");
+    loadShader(oceanDataViewer.shaderVideo, "tex.vert", "video.frag");
   }
 
   void onCreate() override {

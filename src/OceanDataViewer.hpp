@@ -1,4 +1,3 @@
-
 #ifndef OCEAN_DATA_VIEWER_HPP
 #define OCEAN_DATA_VIEWER_HPP
 
@@ -17,6 +16,7 @@
 // #include "al/io/al_CSVReader.hpp"
 #include "al/math/al_Random.hpp"
 
+#include "AppState.hpp"
 #include "al_ext/video/al_VideoDecoder.hpp"
 
 namespace al {
@@ -68,7 +68,7 @@ struct OceanDataViewer {
 
   // video textures
   Texture tex0Y, tex0U, tex0V;
-  VideoDecoder *videoDecoder{NULL};
+  std::unique_ptr<VideoDecoder> videoDecoder;
 
   // bool faceTo = true;
   // bool animateCam = false;
@@ -116,7 +116,9 @@ struct OceanDataViewer {
   Reverb<float> reverb;
   // osc::Recv server;
 
+  ShaderProgram shaderSphere;
   ShaderProgram shaderDataset;
+  ShaderProgram shaderVideo;
 
   std::string dataPath;
 
@@ -306,49 +308,52 @@ struct OceanDataViewer {
   void onDraw(Graphics &g, Nav &nav, State &state) {
     g.clear(0);
 
-    g.shader(shaderDataset);
-    shaderDataset.uniform("blend", blend);
-    shaderDataset.uniform("tex0", 0);
-    shaderDataset.uniform("isVideo", 0);
-    shaderDataset.uniform("mapFunction", -1);
-
     gl::depthFunc(GL_LEQUAL);
     g.culling(false);
-    // g.lighting(true);
-    g.light(light);
-    // g.texture();
     g.depthTesting(true);
     g.blending(true);
     g.blendTrans();
 
+    g.shader(shaderSphere);
+    shaderSphere.uniform("tex0", 0);
+
     // sky
     g.pushMatrix();
-    skyTex.bind();
+    skyTex.bind(0);
     g.translate(nav.pos());
     g.rotate(nav.quat()); // keeps sky still
     g.draw(skyMesh);
-    skyTex.unbind();
-
+    skyTex.unbind(0);
     g.popMatrix();
 
-    // sphere (earth)
-    sphereTex.bind();
-
+    g.pushMatrix();
     // inside sphere
     if (nav.pos().mag() < 2.01f) {
-      g.pushMatrix();
       g.scale(-1, 1, 1);
-      g.draw(sphereMesh); // only needed if we go inside the earth
-    } else {              // outside
-      g.draw(sphereMesh);
     }
-    sphereTex.unbind();
 
-    // Draw data
-    // g.lighting(false);
-    // g.blending(true);
-    // g.blendTrans();
+    // sphere (earth)
+    sphereTex.bind(0);
+    g.draw(sphereMesh); // only needed if we go inside the earth
+    sphereTex.unbind(0);
 
+    //  co2 frames
+    if (state.co2Playing) {
+      g.shader(shaderVideo);
+      tex0Y.bind(0);
+      tex0U.bind(1);
+      tex0V.bind(2);
+      shaderSphere.uniform("tex0", 0);
+      shaderSphere.uniform("tex1", 1);
+      shaderSphere.uniform("tex2", 2);
+      g.draw(sphereMesh);
+      tex0Y.unbind(0);
+      tex0U.unbind(1);
+      tex0V.unbind(2);
+    }
+
+    g.shader(shaderDataset);
+    int bind_index = 0;
     for (int j = 0; j < stressors; j++) {
       if (state.swtch[j]) {
         int offset = 2013;
@@ -357,37 +362,26 @@ struct OceanDataViewer {
           offset = 2003;
           year = state.chiyear;
         }
-        shaderDataset.uniform("mapFunction", j);
-        pic[(int)year - offset][j].bind();
-        g.draw(sphereMesh); // only needed if we go inside the earth
+        pic[(int)year - offset][j].bind(bind_index);
+        std::string texIndex = "tex" + std::to_string(bind_index);
+        shaderDataset.uniform(texIndex.c_str(), bind_index);
+        if (++bind_index > 3) {
+          break;
+        }
       }
     }
-
-    // Draw CO2 frames
-    if (state.co2Playing) {
-      shaderDataset.uniform("texY", 0);
-      shaderDataset.uniform("texU", 1);
-      shaderDataset.uniform("texV", 2);
-      shaderDataset.uniform("isVideo", 1);
-      shaderDataset.uniform("mapFunction", 0);
-
-      tex0Y.bind(0);
-      tex0U.bind(1);
-      tex0V.bind(2);
-      g.draw(sphereMesh); // only needed if we go inside the earth
-    }
+    shaderDataset.uniform("dataNum", (float)bind_index);
+    g.draw(sphereMesh);
 
     // draw cloud
-    for (int j = 0; j < num_cloud; j++) {
-      if (state.cloud_swtch[j]) {
-        cloud[j].bind();
-        g.draw(sphereMesh);
-      }
-    }
+    // for (int j = 0; j < num_cloud; j++) {
+    //   if (state.cloud_swtch[j]) {
+    //     cloud[j].bind();
+    //     g.draw(sphereMesh);
+    //   }
+    // }
 
-    if (nav.pos().mag() < 2.01f) {
-      g.popMatrix(); // pop from push above
-    }
+    g.popMatrix();
   }
 
   void onSound(AudioIOData &io) {
@@ -520,7 +514,7 @@ struct OceanDataViewer {
   void loadCO2Dataset(std::string video) {
     std::string path = dataPath + video;
 
-    videoDecoder = new VideoDecoder();
+    videoDecoder = std::make_unique<VideoDecoder>();
     videoDecoder->enableAudio(false);
     videoDecoder->loop(true);
 
