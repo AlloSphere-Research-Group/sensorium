@@ -337,6 +337,8 @@ struct VideoPlayer {
         texY.bind(0);
         texU.bind(1);
         texV.bind(2);
+        g.translate(nav.pos());
+        g.rotate(nav.quat());
         g.translate(renderPose.get().pos());
         g.rotate(renderPose.get().quat());
         g.scale(renderScale.get());
