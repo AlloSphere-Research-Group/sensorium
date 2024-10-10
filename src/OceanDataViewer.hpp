@@ -1,25 +1,19 @@
-#ifndef OCEAN_DATA_VIEWER_HPP
-#define OCEAN_DATA_VIEWER_HPP
+#pragma once
 
-#include <iostream>
-#include <string.h>
-
+#include "AppState.hpp"
+#include "ShaderManager.hpp"
 #include "al/graphics/al_Image.hpp"
 #include "al/graphics/al_Light.hpp"
 #include "al/graphics/al_Shapes.hpp"
-
-#include "Gamma/Filter.h"
-#include "Gamma/Noise.h"
-#include "Gamma/Oscillator.h"
-#include "al/sound/al_Reverb.hpp"
-
-// #include "al/io/al_CSVReader.hpp"
-#include "al/math/al_Random.hpp"
-
-#include "AppState.hpp"
+#include "al/graphics/al_Texture.hpp"
+#include "al/sphere/al_SphereUtils.hpp"
+#include "al/ui/al_ControlGUI.hpp"
 #include "al_ext/video/al_VideoDecoder.hpp"
+#include <iostream>
+#include <memory>
 
-namespace al {
+using namespace al;
+
 struct OceanDataViewer {
 
   struct GeoLoc {
@@ -109,39 +103,12 @@ struct OceanDataViewer {
   float nation_lat[num_county], nation_lon[num_county];
   float morph_year;
 
-  gam::Buzz<> wave;
-  gam::Sine<> env;
-  gam::NoiseWhite<> mNoise;
-  gam::Biquad<> mFilter{};
-  Reverb<float> reverb;
-  // osc::Recv server;
-
-  ShaderProgram shaderSphere;
-  ShaderProgram shaderDataset;
-  ShaderProgram shaderVideo;
+  ShaderManager shaderManager;
 
   std::string dataPath;
 
-  string slurp(string fileName) {
-    fstream file(fileName);
-    string returnValue = "";
-    while (file.good()) {
-      string line;
-      getline(file, line);
-      returnValue += line + "\n";
-    }
-    return returnValue;
-  }
-
-  void onInit() {}
-
-  void onCreate() {
-
-    addSphereWithTexcoords(skyMesh, 50, 50, true);
-    skyMesh.update();
-
-    addSphereWithTexcoords(sphereMesh, 2, 50, false);
-    sphereMesh.update();
+  void init(const SearchPaths &paths) {
+    shaderManager.setSearchPaths(paths);
 
     if (sphere::isSphereMachine()) {
       if (sphere::isRendererMachine()) {
@@ -150,9 +117,20 @@ struct OceanDataViewer {
         dataPath = "/Volumes/Data/Sensorium/";
       }
     } else {
-      // dataPath = "C:/Users/kenny/data/sensorium/";
       dataPath = "data/";
     }
+  }
+
+  void create() {
+    shaderManager.add("sphere", "tex.vert", "sphere.frag");
+    shaderManager.add("data", "tex.vert", "colormap.frag");
+    shaderManager.add("video", "tex.vert", "video.frag");
+
+    addTexSphere(skyMesh, 50, 50, true);
+    skyMesh.update();
+
+    addTexSphere(sphereMesh, 2, 50, false);
+    sphereMesh.update();
 
     // visible earth, nasa
     // sphereImage = Image(dataPath + "blue_marble_brighter.jpg");
@@ -175,54 +153,24 @@ struct OceanDataViewer {
     skyTex.filter(Texture::LINEAR);
     skyTex.submit(skyImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
 
-    // audio
-    // filter
-    mFilter.zero();
-    mFilter.res(1);
-    mFilter.type(gam::LOW_PASS);
-    reverb.bandwidth(0.6f); // Low-pass amount on input, in [0,1]
-    reverb.damping(0.5f);   // High-frequency damping, in [0,1]
-    reverb.decay(0.6f);     // Tail decay factor, in [0,1]
+    loadChiData();
   }
 
-  void onAnimate(double dt, Nav &nav, State &state, bool isPrimary) {
+  void update(double dt, Nav &nav, State &state, bool isPrimary) {
+    shaderManager.update();
 
     if (isPrimary) {
-      if (state.co2Playing) {
-        state.co2_clock += dt;
+      if (faceTo.get()) {
+        // examplary point that you want to see
+        Vec3f targetPoint = Vec3f(0, 0, 0);
+        nav.faceToward(targetPoint, Vec3f(0, 1, 0), 0.1);
       }
-    }
-
-    if (state.co2Playing) {
-      MediaFrame *frame;
-      if (videoDecoder != NULL) {
-        frame = videoDecoder->getVideoFrame(state.co2_clock);
-        if (frame) {
-          tex0Y.submit(frame->dataY.data());
-          tex0U.submit(frame->dataU.data());
-          tex0V.submit(frame->dataV.data());
-          videoDecoder->gotVideoFrame();
-        } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
-          state.co2_clock = 0;
-          videoDecoder->seek(0);
-        }
-      }
-    }
-
-    if (isPrimary) {
-      Vec3f point_you_want_to_see =
-          Vec3f(0, 0, 0); // examplary point that you want to see
-      if (faceTo)
-        nav.faceToward(point_you_want_to_see, Vec3f(0, 1, 0), 0.1);
 
       if (animateCam.get()) {
         // easing on both in and out
         // EaseIn(value, target, speed)
-        // if (animateCam == 1) {
         anim_speed += EaseIn(anim_speed, anim_target_speed, anim_target_speed);
-        // } else {
-        //   anim_speed += EaseIn(anim_speed, 0.05, 0.05);
-        // }
+
         nav.set(nav.lerp(navTarget, anim_speed));
 
         // end animation when we get close enough
@@ -240,8 +188,9 @@ struct OceanDataViewer {
 
       // Set light position
       light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
-      Light::globalAmbient({lux, lux, lux});
+      light.globalAmbient({lux, lux, lux});
       state.lux = lux;
+
       // Molph year time
       if (state.molph) {
         year = year + 3 * dt;
@@ -269,11 +218,6 @@ struct OceanDataViewer {
       if (s_nav) {
         nav.moveR(0.003 * 0.25);
       }
-      //  audio
-      mFilter.freq(30 * (1 + 10 / (radius + 3)) * (year - 2000));
-      // mFilter.res();
-      mFilter.type(gam::LOW_PASS);
-      reverb.decay(0.6f + 0.3 / (radius + 1)); // Tail decay factor, in [0,1]
 
       // Assign shared states for renderers
       state.global_pose.set(nav);
@@ -287,7 +231,6 @@ struct OceanDataViewer {
       state.swtch[4] = s_fish;
       state.swtch[5] = s_shp;
       state.swtch[6] = s_oa;
-
       // state.swtch[6] = s_plastics;
       // state.swtch[7] = s_resiliency;
       state.swtch[7] = s_slr;
@@ -296,16 +239,40 @@ struct OceanDataViewer {
       state.cloud_swtch[2] = s_cloud_storm;
       state.co2_swtch = s_co2;
       state.co2Playing = s_co2_vid;
-    } // prim end
-    else // renderer
-    {
+
+      if (state.co2Playing) {
+        state.co2_clock += dt;
+      }
+    } else {
       nav.set(state.global_pose);
       // light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
-      // Light::globalAmbient({state.lux, state.lux, state.lux});
+      // light.globalAmbient({state.lux, state.lux, state.lux});
+    }
+
+    camPose.setNoCalls(nav);
+
+    if (state.co2Playing) {
+      MediaFrame *frame;
+      if (videoDecoder != NULL) {
+        frame = videoDecoder->getVideoFrame(state.co2_clock);
+        if (frame) {
+          tex0Y.submit(frame->dataY.data());
+          tex0U.submit(frame->dataU.data());
+          tex0V.submit(frame->dataV.data());
+          videoDecoder->gotVideoFrame();
+        } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+          state.co2_clock = 0;
+          videoDecoder->seek(0);
+        }
+      }
     }
   }
 
-  void onDraw(Graphics &g, Nav &nav, State &state) {
+  void draw(Graphics &g, Nav &nav, State &state) {
+    if (state.videoPlaying) {
+      return;
+    }
+
     g.clear(0);
 
     gl::depthFunc(GL_LEQUAL);
@@ -314,6 +281,7 @@ struct OceanDataViewer {
     g.blending(true);
     g.blendTrans();
 
+    auto &shaderSphere = shaderManager.get("sphere");
     g.shader(shaderSphere);
     shaderSphere.uniform("tex0", 0);
 
@@ -339,6 +307,7 @@ struct OceanDataViewer {
 
     //  co2 frames
     if (state.co2Playing) {
+      auto &shaderVideo = shaderManager.get("video");
       g.shader(shaderVideo);
       tex0Y.bind(0);
       tex0U.bind(1);
@@ -352,6 +321,7 @@ struct OceanDataViewer {
       tex0V.unbind(2);
     }
 
+    auto &shaderDataset = shaderManager.get("data");
     g.shader(shaderDataset);
     int bind_index = 0;
     for (int j = 0; j < stressors; j++) {
@@ -384,18 +354,6 @@ struct OceanDataViewer {
     g.popMatrix();
   }
 
-  void onSound(AudioIOData &io) {
-    while (io()) {
-      // wave.freq( (2 + mNoise()) * (1+10/radius) * (year-2000) ) ;
-      env.freq(0.003 * (year - 1980));
-      float wave_out = mFilter(mNoise() * gain.get() * env());
-      float wet1, wet2;
-      reverb(wave_out, wet1, wet2);
-      io.out(0) = wet1;
-      io.out(1) = wet2;
-    }
-  }
-
   float EaseIn(float _value, float _target, float _speed) {
     float d = _target - _value;
     float x = d * _speed;
@@ -412,22 +370,15 @@ struct OceanDataViewer {
     anim_speed = anim_speed / 5;
   }
 
-  void registerParams(ControlGUI *gui, PresetHandler &presets,
-                      PresetSequencer &seq, SequenceRecorder &rec, Nav &nav,
-                      State &state) {
-    std::string displayText = "AlloOcean. Ocean stressor (2012-2023)";
-    // "AlloOcean. Ocean stressor from Cumulative Human Impacts (2003-2013)"
-    *gui << lat << lon << radius << blend; // << lux << year << gain;
-    *gui << year << chiyear;               // << frame;
-    *gui << s_years;                       // << s_frames;
-    *gui << s_nav << faceTo << animateCam;
-    *gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
-    *gui << s_fish << s_shp << s_plastics << s_resiliency;
-    *gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
-    // *gui << s_cf_dd << a_f // currently we don't have this data
-    // *gui << s_ci << s_oc << s_carbon;
-
-    // *gui << lat << lon << radius << lux << year << trans << gain;
+  void registerParams(ControlGUI &gui, PresetHandler &presets,
+                      PresetSequencer &seq, State &state, Nav &nav) {
+    gui << lat << lon << radius << blend; // << lux << year << gain;
+    gui << year << chiyear;               // << frame;
+    gui << s_years;                       // << s_frames;
+    gui << s_nav << faceTo << animateCam;
+    gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
+    gui << s_fish << s_shp << s_plastics << s_resiliency;
+    gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
 
     presets << year << camPose << blend;
     presets << s_years << s_nav;
@@ -479,7 +430,7 @@ struct OceanDataViewer {
     Image oceanData;
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < years; d++) {
-      ostringstream ostr;
+      std::ostringstream ostr;
       ostr << dataPath << pathPrefix << d + 2012 << ".png";
       oceanData = Image(ostr.str());
 
@@ -497,9 +448,9 @@ struct OceanDataViewer {
     Image oceanData;
     std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
     for (int d = 0; d < chiyears; d++) {
-      ostringstream ostr;
+      std::ostringstream ostr;
       ostr << dataPath << prefix << d + 2003 << postfix;
-      ;
+
       oceanData = Image(ostr.str());
 
       pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
@@ -618,7 +569,3 @@ struct OceanDataViewer {
     std::cout << "Loaded Ocean data." << std::endl;
   }
 };
-
-} // namespace al
-
-#endif

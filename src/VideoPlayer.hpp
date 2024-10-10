@@ -1,15 +1,18 @@
 
-#ifndef VIDEO_PLAYER_HPP
-#define VIDEO_PLAYER_HPP
+#pragma once
 
-#include <memory>
-
-#include "al/sound/al_SpeakerAdjustment.hpp"
+#include "AppState.hpp"
+#include "ShaderManager.hpp"
+#include "al/graphics/al_Shapes.hpp"
+#include "al/graphics/al_Texture.hpp"
+#include "al/graphics/al_VAOMesh.hpp"
 #include "al/sphere/al_SphereUtils.hpp"
+#include "al/ui/al_ControlGUI.hpp"
 #include "al_ext/video/al_VideoDecoder.hpp"
+#include <memory>
+#include <string>
 
 namespace al {
-
 struct VideoPlayer {
 
   const std::string pano_vert = R"(
@@ -162,14 +165,13 @@ struct VideoPlayer {
   ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, 0))};
   ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
 
-  void registerParams(ControlGUI *gui, PresetHandler &presets,
-                      PresetSequencer &seq, SequenceRecorder &rec,
-                      State &state) {
-    *gui << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
-    *gui << playWater << playAerialImages << playSF;
-    *gui << playBoardwalk << playCoral;
-    *gui << playOverfishing << playAcidification << playBoat;
-    *gui << renderPose << renderScale;
+  void registerParams(ControlGUI &gui, PresetHandler &presets,
+                      PresetSequencer &seq, State &state) {
+    gui << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
+    gui << playWater << playAerialImages << playSF;
+    gui << playBoardwalk << playCoral;
+    gui << playOverfishing << playAcidification << playBoat;
+    gui << renderPose << renderScale;
 
     presets << renderVideoInSim << playingVideo << brightness << blend0
             << blend1;
@@ -252,9 +254,7 @@ struct VideoPlayer {
       state.global_clock = 0.0;
   };
 
-  void onInit() {}
-
-  void onCreate(State &state, bool isPrimary) {
+  void init(const SearchPaths &paths) {
     if (sphere::isSphereMachine()) {
       if (sphere::isRendererMachine()) {
         dataPath = "/data/Sensorium/video/";
@@ -264,7 +264,9 @@ struct VideoPlayer {
     } else {
       dataPath = "data/video/";
     }
+  }
 
+  void create() {
     // compile & initialize shader
     pano_shader.compile(pano_vert, pano_frag);
     pano_shader.begin();
@@ -291,14 +293,13 @@ struct VideoPlayer {
     addSphereWithEquirectTex(sphere, 10, 50);
     sphere.update();
 
-    if (isPrimary) {
-      state.global_clock = 0;
-      state.videoPlaying = false;
-    }
+    videoToLoad.registerChangeCallback([&](std::string value) {
+      std::cout << "loading video file: " << value << std::endl;
+      loadVideo = true;
+    });
   }
 
-  void onAnimate(al_sec dt, State &state, bool isPrimary) {
-
+  void update(al_sec dt, State &state, bool isPrimary) {
     if (loadVideo)
       loadVideoFile(state, isPrimary);
 
@@ -318,6 +319,7 @@ struct VideoPlayer {
           texV.submit(frame->dataV.data());
           videoDecoder->gotVideoFrame();
         } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+          // TODO: global clock shouldn't be set here
           state.global_clock = 0;
           videoDecoder->seek(0);
         }
@@ -325,38 +327,35 @@ struct VideoPlayer {
     }
   }
 
-  void onDraw(Graphics &g, Nav &nav, State &state, bool isPrimary) {
-
-    if (state.videoPlaying) {
-      // nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
-      // nav.pos().set(0);
-      nav.setIdentity();
-
-      g.clear();
-
-      if (renderVideoInSim || !isPrimary) {
-        g.pushMatrix();
-        g.shader(pano_shader);
-        g.shader().uniform("brightness", brightness);
-        // g.shader().uniform("blend0", blend0);
-        g.shader().uniform("blend1", blend1);
-        texY.bind(0);
-        texU.bind(1);
-        texV.bind(2);
-        g.translate(renderPose.get().pos());
-        g.rotate(renderPose.get().quat());
-        g.scale(renderScale.get());
-        g.draw(sphere);
-        texY.unbind(0);
-        texU.unbind(1);
-        texV.unbind(2);
-
-        g.popMatrix();
-      }
+  void draw(Graphics &g, Nav &nav, State &state, bool isPrimary) {
+    if (!state.videoPlaying || (isPrimary && !renderVideoInSim)) {
+      return;
     }
+
+    // nav.quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
+    // nav.pos().set(0);
+    nav.setIdentity();
+
+    g.clear();
+
+    g.pushMatrix();
+    g.shader(pano_shader);
+    g.shader().uniform("brightness", brightness);
+    // g.shader().uniform("blend0", blend0);
+    g.shader().uniform("blend1", blend1);
+    texY.bind(0);
+    texU.bind(1);
+    texV.bind(2);
+    g.translate(renderPose.get().pos());
+    g.rotate(renderPose.get().quat());
+    g.scale(renderScale.get());
+    g.draw(sphere);
+    texY.unbind(0);
+    texU.unbind(1);
+    texV.unbind(2);
+
+    g.popMatrix();
   }
 };
 
 } // namespace al
-
-#endif

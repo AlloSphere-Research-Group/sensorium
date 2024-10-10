@@ -1,6 +1,7 @@
+#pragma once
 
-#ifndef APPSTATE_HPP
-#define APPSTATE_HPP
+#include "al/spatial/al_Pose.hpp"
+#include "al/types/al_Color.hpp"
 
 constexpr int chiyears = 11;    // Total number of years (2003~2013)
 constexpr int years = 12;       // Total number of years (2012~2023)
@@ -32,5 +33,3 @@ struct State {
   al::Vec3f render_co2_pos[500];
   al::Color render_co2_col[500];
 };
-
-#endif

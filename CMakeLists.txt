@@ -6,7 +6,11 @@ project(Sensorium)
 set(APP_NAME app)
 
 # path to main source file
-add_executable(${APP_NAME} src/main.cpp)
+add_executable(${APP_NAME}
+  src/main.cpp
+  src/FileWatcher.cpp
+  src/ShaderManager.cpp
+)
 
 # add allolib as a subdirectory to the project
 add_subdirectory(allolib)

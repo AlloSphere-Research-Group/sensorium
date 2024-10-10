@@ -4,6 +4,7 @@ build
 data
 presets
 .vscode
+.vs
 
 # configuration files
 imgui.ini

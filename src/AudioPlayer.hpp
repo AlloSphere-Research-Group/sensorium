@@ -1,13 +1,12 @@
-
-#ifndef AUDIO_PLAYER_HPP
-#define AUDIO_PLAYER_HPP
+#pragma once
 
 #include "al/sound/al_SoundFile.hpp"
+#include "al/sphere/al_SphereUtils.hpp"
+#include "al/ui/al_ControlGUI.hpp"
+#include <vector>
 
 namespace al {
-
 struct AudioPlayer {
-
   SoundFilePlayerTS audioPlayerTS;
   SoundFilePlayerTS intro;
   std::vector<float> buffer;
@@ -20,7 +19,7 @@ struct AudioPlayer {
   Parameter AudioVolume{"Audio_Volume", 1.1, 0, 2.5};
   Parameter SubVolume{"Sub_Volume", 0.5, 0, 2.5};
 
-  void onInit() {
+  void init() {
     // const char name[] = "data/jkm-wave-project.wav";
     // const char name[] = "data/new-sensorium-project.wav";
     const char name[] = "data/Normalized-Complete-Sensorium-project.wav";
@@ -40,21 +39,23 @@ struct AudioPlayer {
     }
     intro.setPause();
     intro.setNoLoop();
-
   }
-  void registerParams(ControlGUI *gui, PresetHandler &presets,
-                      PresetSequencer &seq, State &state) {
-    *gui << playIntro << playAudio << playLoop << pauseAudio << rewindAudio << AudioVolume
-         << SubVolume;
+
+  void registerParams(ControlGUI &gui, PresetHandler &presets,
+                      PresetSequencer &seq) {
+    gui << playIntro << playAudio << playLoop << pauseAudio << rewindAudio
+        << AudioVolume << SubVolume;
 
     presets << AudioVolume << SubVolume << playAudio << rewindAudio;
-    seq << playIntro << playAudio << pauseAudio << rewindAudio << AudioVolume << SubVolume;
+    seq << playIntro << playAudio << pauseAudio << rewindAudio << AudioVolume
+        << SubVolume;
 
     playIntro.registerChangeCallback([&](float value) {
-      if (value == 1.0){
+      if (value == 1.0) {
         intro.setRewind();
         intro.setPlay();
-      } else intro.setPause();
+      } else
+        intro.setPause();
     });
     playAudio.registerChangeCallback([&](float value) {
       if (value == 1.0)
@@ -76,8 +77,8 @@ struct AudioPlayer {
         audioPlayerTS.setPause();
     });
   }
-  void onSound(AudioIOData &io) {
 
+  void onSound(AudioIOData &io) {
     int frames = (int)io.framesPerBuffer();
     int channels = audioPlayerTS.soundFile.channels;
     int bufferLength = frames * channels;
@@ -100,7 +101,7 @@ struct AudioPlayer {
 
       if (al::sphere::isSphereMachine()) {
         for (int i = 0; i < 12; i++)
-          io.out(i) = (s+l) * AudioVolume * 0.4;
+          io.out(i) = (s + l) * AudioVolume * 0.4;
 
         for (int i = 16; i < 31; i++)
           io.out(i) = l * AudioVolume * 0.4;
@@ -117,12 +118,11 @@ struct AudioPlayer {
         // io.out(48) = (l + r) * SubVolume * 0.5;
         io.out(47) = (l + r) * SubVolume * 0.5;
       } else {
-        io.out(0) = (s+l) * AudioVolume;
-        io.out(1) = (s+r) * AudioVolume;
+        io.out(0) = (s + l) * AudioVolume;
+        io.out(1) = (s + r) * AudioVolume;
       }
     }
   }
 };
 
 } // namespace al
-#endif
