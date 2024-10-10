@@ -120,6 +120,9 @@ struct SensoriumApp : public DistributedAppWithState<State> {
           sequencer.playSequence("sensorium");
         }
       }
+      if (k.key() == 'p') {
+        nav().print();
+      }
     }
     return true;
   }

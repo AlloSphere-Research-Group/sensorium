@@ -152,7 +152,7 @@ struct VideoPlayer {
   Parameter blend0{"blend0", "", 0.0, 0.0, 1.0};
   Parameter blend1{"blend1", "", 1.0, 0.0, 1.0};
 
-  Trigger playWater{"Play_Water", ""};
+  // Trigger playWater{"Play_Water", ""};
   Trigger playAerialImages{"Play_AerialImages", ""};
   Trigger playSF{"Play_SF", ""};
   Trigger playBoardwalk{"Play_Boardwalk", ""};
@@ -168,7 +168,7 @@ struct VideoPlayer {
   void registerParams(ControlGUI &gui, PresetHandler &presets,
                       PresetSequencer &seq, State &state) {
     gui << renderVideoInSim << playingVideo << brightness << blend0 << blend1;
-    gui << playWater << playAerialImages << playSF;
+    gui << playAerialImages << playSF;
     gui << playBoardwalk << playCoral;
     gui << playOverfishing << playAcidification << playBoat;
     gui << renderPose << renderScale;
@@ -177,8 +177,8 @@ struct VideoPlayer {
             << blend1;
     seq << videoToLoad << blend0 << blend1 << playingVideo;
     seq << playBoardwalk << playCoral << playOverfishing << playAerialImages
-        << playAcidification << playSF << playBoat
-        << playWater; //<< renderPose << renderScale;
+        << playAcidification << playSF
+        << playBoat; //<< renderPose << renderScale;
 
     // these change callbacks should run only on primary
     playingVideo.registerChangeCallback([&](float value) {
@@ -216,11 +216,6 @@ struct VideoPlayer {
     });
     playBoat.registerChangeCallback([&](float value) {
       videoToLoad.set("sensorium_boat_scene_12 (1080p).mp4");
-      playingVideo.set(1.0);
-    });
-    playWater.registerChangeCallback([&](float value) {
-      videoToLoad.set("out3r2x.mp4");
-      // videoToLoad.set("Iron_Man-Trailer_HD.mp4");
       playingVideo.set(1.0);
     });
   }
