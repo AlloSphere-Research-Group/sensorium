@@ -23,33 +23,34 @@ void OceanDataViewer::create() {
   shaderManager.add("data", "common.vert", "data.frag");
   shaderManager.add("video", "common.vert", "video.frag");
 
-  addTexSphere(skyMesh, 50, 50, true);
-  skyMesh.update();
-
-  addTexSphere(sphereMesh, 2, 50, false);
-  sphereMesh.generateNormals();
-  sphereMesh.update();
+  addTexSphere(earthMesh, 2, 50, false);
+  earthMesh.update();
 
   // visible earth, nasa
-  // sphereImage = Image(dataPath + "blue_marble_brighter.jpg");
-  auto sphereImage = Image(dataPath + "16k.jpg");
-  if (sphereImage.array().size() == 0) {
+  // earthImage = Image(dataPath + "blue_marble_brighter.jpg");
+  auto earthImage = Image(dataPath + "16k.jpg");
+  if (earthImage.array().size() == 0) {
     std::cerr << "failed to load sphere image" << std::endl;
   }
 
-  sphereTex.create2D(sphereImage.width(), sphereImage.height());
-  sphereTex.filter(Texture::LINEAR);
-  sphereTex.submit(sphereImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+  earthTex.create2D(earthImage.width(), earthImage.height());
+  earthTex.filter(Texture::LINEAR);
+  earthTex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  earthTex.submit(earthImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+
+  addTexSphere(spaceMesh, 50, 50, true);
+  spaceMesh.update();
 
   // paulbourke.net
-  auto skyImage = Image(dataPath + "Stellarium3.jpg");
-  if (skyImage.array().size() == 0) {
+  auto spaceImage = Image(dataPath + "Stellarium3.jpg");
+  if (spaceImage.array().size() == 0) {
     std::cerr << "failed to load background image" << std::endl;
   }
 
-  skyTex.create2D(skyImage.width(), skyImage.height());
-  skyTex.filter(Texture::LINEAR);
-  skyTex.submit(skyImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+  spaceTex.create2D(spaceImage.width(), spaceImage.height());
+  spaceTex.filter(Texture::LINEAR);
+  spaceTex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  spaceTex.submit(spaceImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
 
   loadAllData();
 }
@@ -144,9 +145,9 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
     if (videoDecoder != NULL) {
       frame = videoDecoder->getVideoFrame(state.co2_clock);
       if (frame) {
-        tex0Y.submit(frame->dataY.data());
-        tex0U.submit(frame->dataU.data());
-        tex0V.submit(frame->dataV.data());
+        texY.submit(frame->dataY.data());
+        texU.submit(frame->dataU.data());
+        texV.submit(frame->dataV.data());
         videoDecoder->gotVideoFrame();
       } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
         state.co2_clock = 0;
@@ -176,11 +177,11 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state) {
 
   // sky
   g.pushMatrix();
-  skyTex.bind(0);
+  spaceTex.bind(0);
   g.translate(nav.pos());
   g.rotate(nav.quat()); // keeps sky still
-  g.draw(skyMesh);
-  skyTex.unbind(0);
+  g.draw(spaceMesh);
+  spaceTex.unbind(0);
   g.popMatrix();
 
   g.pushMatrix();
@@ -190,24 +191,24 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state) {
   }
 
   // sphere (earth)
-  sphereTex.bind(0);
-  g.draw(sphereMesh); // only needed if we go inside the earth
-  sphereTex.unbind(0);
+  earthTex.bind(0);
+  g.draw(earthMesh); // only needed if we go inside the earth
+  earthTex.unbind(0);
 
   //  co2 frames
   if (state.co2Playing) {
     auto &shaderVideo = shaderManager.get("video");
     g.shader(shaderVideo);
-    tex0Y.bind(0);
-    tex0U.bind(1);
-    tex0V.bind(2);
+    texY.bind(0);
+    texU.bind(1);
+    texV.bind(2);
     shaderVideo.uniform("texY", 0);
     shaderVideo.uniform("texU", 1);
     shaderVideo.uniform("texV", 2);
-    g.draw(sphereMesh);
-    tex0Y.unbind(0);
-    tex0U.unbind(1);
-    tex0V.unbind(2);
+    g.draw(earthMesh);
+    texY.unbind(0);
+    texU.unbind(1);
+    texV.unbind(2);
   }
 
   auto &shaderDataset = shaderManager.get("data");
@@ -230,13 +231,13 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state) {
     }
   }
   shaderDataset.uniform("dataNum", (float)bind_index);
-  g.draw(sphereMesh);
+  g.draw(earthMesh);
 
   // draw cloud
   // for (int j = 0; j < num_cloud; j++) {
   //   if (state.cloud_swtch[j]) {
   //     cloud[j].bind();
-  //     g.draw(sphereMesh);
+  //     g.draw(earthMesh);
   //   }
   // }
 
@@ -330,12 +331,18 @@ void OceanDataViewer::loadCO2Dataset(const std::string &video) {
 
   videoDecoder->start();
 
-  tex0Y.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
-                 Texture::RED, Texture::RED, Texture::UBYTE);
-  tex0U.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
-                 Texture::RED, Texture::RED, Texture::UBYTE);
-  tex0V.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
-                 Texture::RED, Texture::RED, Texture::UBYTE);
+  texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
+                Texture::RED, Texture::RED, Texture::UBYTE);
+  texY.filter(Texture::LINEAR);
+  texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
+                Texture::RED, Texture::RED, Texture::UBYTE);
+  texU.filter(Texture::LINEAR);
+  texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
+                Texture::RED, Texture::RED, Texture::UBYTE);
+  texV.filter(Texture::LINEAR);
+  texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 }
 
 void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,

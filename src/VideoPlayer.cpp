@@ -131,10 +131,16 @@ void VideoPlayer::loadVideoFile(State &state, bool isPrimary) {
 
   texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
                 Texture::RED, Texture::RED, Texture::UBYTE);
+  texY.filter(Texture::LINEAR);
+  texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
   texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
                 Texture::RED, Texture::RED, Texture::UBYTE);
+  texU.filter(Texture::LINEAR);
+  texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
   texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
                 Texture::RED, Texture::RED, Texture::UBYTE);
+  texV.filter(Texture::LINEAR);
+  texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 
   if (isPrimary)
     state.global_clock = 0.0;

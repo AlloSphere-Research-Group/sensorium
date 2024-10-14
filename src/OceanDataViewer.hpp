@@ -3,7 +3,6 @@
 #include "AppState.hpp"
 #include "ShaderManager.hpp"
 #include "al/graphics/al_Image.hpp"
-#include "al/graphics/al_Light.hpp"
 #include "al/graphics/al_Shapes.hpp"
 #include "al/graphics/al_Texture.hpp"
 #include "al/ui/al_ControlGUI.hpp"
@@ -31,10 +30,26 @@ struct OceanDataViewer {
                       int stressorIndex);
   void loadCO2Dataset(const std::string &video);
 
+  std::unique_ptr<VideoDecoder> videoDecoder;
+  Texture texY, texU, texV;
+
+  ShaderManager shaderManager;
+  Texture spaceTex, earthTex;
+  VAOMesh spaceMesh, earthMesh;
+
+  std::string dataPath;
+
+
+
   ParameterVec3 llr{"llr", "Nav"};
   ParameterPose camPose{"camPose", "Nav"};
-  ParameterBool animateCam{"animateCam", "Nav", 0.0};
+  
   ParameterBool faceTo{"Face_Center", "Nav", 1.0};
+  ParameterBool animateCam{"animateCam", "Nav", 0.0};
+
+  Pose navTarget;
+  float anim_speed = 0.0;
+  float anim_target_speed = 0.002;
 
   Parameter blend{"blend", "", 1.0, 0.0, 1.0};
 
@@ -61,16 +76,9 @@ struct OceanDataViewer {
   ParameterBool s_nav{"Explore_Globe", "", 0.0};
   ParameterBool s_years{"CycleYears", "", 0.0};
 
-  // video textures
-  Texture tex0Y, tex0U, tex0V;
-  std::unique_ptr<VideoDecoder> videoDecoder;
 
-  Pose navTarget;
-  float anim_speed = 0.0;
-  float anim_target_speed = 0.002;
+  
 
-  VAOMesh skyMesh, sphereMesh;
-  Texture skyTex, sphereTex;
 
   Texture pic[years][stressors];
   bool loaded[years][stressors];
@@ -78,7 +86,8 @@ struct OceanDataViewer {
   Texture cloud[num_cloud];
   float morph_year;
 
-  ShaderManager shaderManager;
 
-  std::string dataPath;
+
+
+  
 };

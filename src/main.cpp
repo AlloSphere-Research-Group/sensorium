@@ -57,8 +57,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
     nav().pos(0, 0, -15);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
-    navControl().vscale(0.125 * 0.1 * 0.5);
-    navControl().tscale(2 * 0.1 * 0.5);
+    // navControl().vscale(0.125 * 0.1 * 0.5);
+    // navControl().tscale(2 * 0.1 * 0.5);
 
     oceanDataViewer.create();
     // videoPlayer.create();
