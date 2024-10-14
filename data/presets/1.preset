@@ -12,7 +12,6 @@
 /Fishing_Demersal_non-destructive_high-bycatch i 0 
 /Fishing_Pelagic_high-bycatch i 0 
 /Fishing_Pelagic_low-bycatch i 0 
-/Light f 0.600000 
 /Nutrient_pollution i 0 
 /Ocean_acidification i 0 
 /Organic_chemical_pollution i 0 
@@ -22,10 +21,8 @@
 /Sea_surface_temperature i 0 
 /Shipping i 0 
 /Sub_Volume f 0.600000 
-/Year f 2003.000000 
-/blend0 f 0.000000 
-/blend1 f 1.000000 
-/brightness f 1.000000 
+/Year f 2003.000000
+/videoBlend f 1.000000 
 /camPose fffffff 23.698849 0.000000 -43.574905 0.246493 0.000000 0.969144 0.000000 
 /playingVideo i 0 
 /renderVideoInSim i 1 

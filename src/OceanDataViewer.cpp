@@ -27,6 +27,7 @@ void OceanDataViewer::create() {
   skyMesh.update();
 
   addTexSphere(sphereMesh, 2, 50, false);
+  sphereMesh.generateNormals();
   sphereMesh.update();
 
   // visible earth, nasa
@@ -81,11 +82,6 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
     Vec3d pos = nav.pos();
     pos.normalize();
 
-    // Set light position
-    light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
-    light.globalAmbient({lux, lux, lux});
-    state.lux = lux;
-
     // Molph year time
     if (state.molph) {
       year = year + 3 * dt;
@@ -139,8 +135,6 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
     }
   } else {
     nav.set(state.global_pose);
-    // light.pos(nav.pos().x, nav.pos().y, nav.pos().z);
-    // light.globalAmbient({state.lux, state.lux, state.lux});
   }
 
   camPose.setNoCalls(nav);
@@ -171,7 +165,6 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state) {
 
   gl::depthFunc(GL_LEQUAL);
   g.culling(false);
-  g.light(light);
   g.depthTesting(true);
   g.blending(true);
   g.blendTrans();
@@ -348,25 +341,24 @@ void OceanDataViewer::loadCO2Dataset(const std::string &video) {
 void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
                                      PresetSequencer &seq, State &state,
                                      Nav &nav) {
-  gui << blend;           // << lux << year << gain;
+  gui << blend;           // << year << gain;
   gui << year << chiyear; // << frame;
   gui << s_years;         // << s_frames;
   gui << s_nav << faceTo << animateCam;
   gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
   gui << s_fish << s_shp << s_plastics << s_resiliency;
-  gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
+  gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
 
   presets << year << camPose << blend;
   presets << s_years << s_nav;
   presets << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
   presets << s_fish << s_shp << s_plastics << s_resiliency;
-  presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid
-          << lux;
+  presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
 
   seq << llr << s_years << s_nav << camPose << faceTo << blend;
   seq << s_carbon << s_slr << s_shp << s_chl << s_flh << s_oa << s_sst;
   seq << s_fish << s_plastics << s_resiliency;
-  seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid << lux;
+  seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
 
   camPose.registerChangeCallback([&](Pose p) { nav.set(p); });
   llr.registerChangeCallback([&](Vec3f v) { setGeoTarget(v.x, v.y, v.z); });

@@ -12,7 +12,7 @@
 
 using namespace al;
 
-struct SensoriumApp : public DistributedAppWithState<State> {
+struct SensoriumApp : DistributedAppWithState<State> {
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
   OceanDataViewer oceanDataViewer;
@@ -47,8 +47,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
     // synchronizes attached params accross renderers
     parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale
-                      << videoPlayer.videoToLoad << videoPlayer.brightness
-                      << videoPlayer.blend0 << videoPlayer.blend1
+                      << videoPlayer.videoToLoad << videoPlayer.videoBlend
                       << oceanDataViewer.blend;
   }
 
@@ -62,7 +61,7 @@ struct SensoriumApp : public DistributedAppWithState<State> {
     navControl().tscale(2 * 0.1 * 0.5);
 
     oceanDataViewer.create();
-    videoPlayer.create();
+    // videoPlayer.create();
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
@@ -77,8 +76,8 @@ struct SensoriumApp : public DistributedAppWithState<State> {
       auto &gui = guiDomain->newGUI();
 
       oceanDataViewer.registerParams(gui, presets, sequencer, state(), nav());
-      videoPlayer.registerParams(gui, presets, sequencer, state());
-      audioPlayer.registerParams(gui, presets, sequencer);
+      // videoPlayer.registerParams(gui, presets, sequencer, state());
+      // audioPlayer.registerParams(gui, presets, sequencer);
 
       sequencer << presets;
       // *gui << sequencer << recorder;
@@ -87,14 +86,14 @@ struct SensoriumApp : public DistributedAppWithState<State> {
 
   void onAnimate(double dt) {
     oceanDataViewer.update(dt, nav(), state(), isPrimary());
-    videoPlayer.update(dt, state(), isPrimary());
+    // videoPlayer.update(dt, state(), isPrimary());
   }
 
-  void onSound(AudioIOData &io) { audioPlayer.onSound(io); }
+  // void onSound(AudioIOData &io) { audioPlayer.onSound(io); }
 
   void onDraw(Graphics &g) {
     oceanDataViewer.draw(g, nav(), state());
-    videoPlayer.draw(g, nav(), state(), isPrimary());
+    // videoPlayer.draw(g, nav(), state(), lens(), isPrimary());
   }
 
   bool onKeyDown(const Keyboard &k) {

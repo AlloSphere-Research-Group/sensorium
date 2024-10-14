@@ -1,4 +1,4 @@
-cmake_minimum_required(VERSION 3.0)
+cmake_minimum_required(VERSION 3.5)
 
 project(Sensorium)
 
@@ -10,7 +10,12 @@ add_executable(${APP_NAME}
   src/main.cpp
   src/FileWatcher.cpp
   src/ShaderManager.cpp
+  src/OceanDataViewer.cpp
+  src/VideoPlayer.cpp
+  src/AudioPlayer.cpp
 )
+
+target_include_directories(${APP_NAME} PUBLIC src)
 
 # add allolib as a subdirectory to the project
 add_subdirectory(allolib)

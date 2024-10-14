@@ -10,20 +10,25 @@ uniform float foc_len;
 
 out vec2 var_texcoord;
 
-vec4 stereo_displace(vec4 v, float e, float f) {
-  // eye to vertex distance
-  float l = sqrt((v.x - e) * (v.x - e) + v.y * v.y + v.z * v.z);
-  // absolute z-direction distance
-  float z = abs(v.z);
-  // x coord of projection of vertex on focal plane when looked from eye
-  float t = f * (v.x - e) / z;
-  // x coord of displaced vertex to make displaced vertex be projected on focal
-  // plane when looked from origin at the same point original vertex would be
-  // projected when looked form eye
-  v.x = z * (e + t) / f;
-  // set distance from origin to displaced vertex same as eye to original vertex
-  v.xyz = normalize(v.xyz);
-  v.xyz *= l;
+vec4 stereo_displace(vec4 v, float e, float r) {
+  vec3 OE = vec3(-v.z, 0.0, v.x); // eye dir, orthogonal to vert vec
+  OE = normalize(OE);             // but preserving +y up-vector
+  OE *= e;                        // set mag to eye separation
+  vec3 EV = v.xyz - OE;           // eye to vertex
+  float ev = length(EV);          // save length
+  EV /= ev;                       // normalize
+
+  // coefs for polynomial t^2 + 2bt + c = 0
+  // derived from cosine law r^2 = t^2 + e^2 + 2tecos(theta)
+  // where theta is angle between OE and EV
+  // t is distance to sphere surface from eye
+  float b = -dot(OE, EV); // multiply -1 to dot product cuz
+                          // OE needs to be flipped in dir
+  float c = e * e - r * r;
+  float t = -b + sqrt(b * b - c); // quadratic formula
+
+  v.xyz = OE + t * EV;           // dir from orig to sphere surface
+  v.xyz = ev * normalize(v.xyz); // set mag to eye-to-v dist
   return v;
 }
 

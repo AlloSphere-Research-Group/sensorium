@@ -23,6 +23,8 @@ void VideoPlayer::create() {
   shaderManager.add("video", "common.vert", "video.frag");
   auto &videoShader = shaderManager.get("video");
   videoShader.begin();
+  videoShader.uniform("eye_sep", 0.f);
+  videoShader.uniform("foc_len", 6.f);
   videoShader.uniform("texY", 0);
   videoShader.uniform("texU", 1);
   videoShader.uniform("texV", 2);
@@ -49,16 +51,15 @@ void VideoPlayer::create() {
 void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
   shaderManager.update();
 
-  if (loadVideo)
+  if (loadVideo) {
     loadVideoFile(state, isPrimary);
-
-  if (isPrimary) {
-    if (state.videoPlaying) {
-      state.global_clock += dt;
-    }
   }
 
   if (state.videoPlaying) {
+    if (isPrimary) {
+      state.global_clock += dt;
+    }
+
     MediaFrame *frame;
     if (videoDecoder != nullptr) {
       frame = videoDecoder->getVideoFrame(state.global_clock);
@@ -77,7 +78,10 @@ void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
   }
 }
 
-void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, bool isPrimary) {
+void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, Lens &lens,
+                       bool isPrimary) {
+  g.clear();
+
   if (!state.videoPlaying || (isPrimary && !renderVideoInSim)) {
     return;
   }
@@ -85,10 +89,11 @@ void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, bool isPrimary) {
   nav.setIdentity();
 
   auto &videoShader = shaderManager.get("video");
-  g.clear();
 
   g.shader(videoShader);
   videoShader.uniform("videoBlend", videoBlend.get());
+  videoShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
+  videoShader.uniform("foc_len", lens.focalLength());
 
   texY.bind(0);
   texU.bind(1);
