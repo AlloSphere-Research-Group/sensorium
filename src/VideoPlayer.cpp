@@ -20,11 +20,9 @@ void VideoPlayer::init(const SearchPaths &paths) {
 
 void VideoPlayer::create() {
   // compile & initialize shader
-  shaderManager.add("video", "common.vert", "video.frag");
+  shaderManager.add("video", "mono.vert", "video.frag");
   auto &videoShader = shaderManager.get("video");
   videoShader.begin();
-  videoShader.uniform("eye_sep", 0.f);
-  videoShader.uniform("foc_len", 6.f);
   videoShader.uniform("texY", 0);
   videoShader.uniform("texU", 1);
   videoShader.uniform("texV", 2);
@@ -48,14 +46,20 @@ void VideoPlayer::create() {
   });
 }
 
-void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
+void VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
   shaderManager.update();
 
   if (loadVideo) {
-    loadVideoFile(state, isPrimary);
+    if (loadVideoFile()) {
+      loadVideo = false;
+      if (isPrimary) {
+        state.video_clock = 0.0;
+        nav.home();
+      }
+    }
   }
 
-  if (state.videoPlaying) {
+  if (playingVideo.get()) {
     if (isPrimary) {
       state.video_clock += dt;
     }
@@ -70,7 +74,7 @@ void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
         videoDecoder->gotVideoFrame();
       } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
         if (isPrimary) {
-          state.video_clock = 0;
+          state.video_clock = 0.0;
         }
         videoDecoder->seek(0);
       }
@@ -78,22 +82,21 @@ void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
   }
 }
 
-void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, Lens &lens,
-                       bool isPrimary) {
-  g.clear();
-
-  if (!state.videoPlaying || (isPrimary && !renderVideoInSim)) {
-    return;
+bool VideoPlayer::draw(Graphics &g, bool isPrimary) {
+  if (!playingVideo.get()) {
+    return false;
   }
 
-  nav.home();
+  g.clear();
+
+  if (isPrimary && !renderVideoInSim.get()) {
+    return true;
+  }
 
   auto &videoShader = shaderManager.get("video");
 
   g.shader(videoShader);
   videoShader.uniform("videoBlend", videoBlend.get());
-  videoShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
-  videoShader.uniform("foc_len", lens.focalLength());
 
   texY.bind(0);
   texU.bind(1);
@@ -109,9 +112,11 @@ void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, Lens &lens,
   texY.unbind(0);
   texU.unbind(1);
   texV.unbind(2);
+
+  return true;
 }
 
-void VideoPlayer::loadVideoFile(State &state, bool isPrimary) {
+bool VideoPlayer::loadVideoFile() {
   std::string path = dataPath + videoToLoad.get();
 
   if (videoDecoder != nullptr) {
@@ -123,9 +128,8 @@ void VideoPlayer::loadVideoFile(State &state, bool isPrimary) {
 
   if (!videoDecoder->load(path.c_str())) {
     std::cerr << "Error loading video file: " << path << std::endl;
-    return;
+    return false;
   }
-  loadVideo = false;
 
   videoDecoder->start();
 
@@ -142,8 +146,7 @@ void VideoPlayer::loadVideoFile(State &state, bool isPrimary) {
   texV.filter(Texture::LINEAR);
   texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 
-  if (isPrimary)
-    state.video_clock = 0.0;
+  return true;
 }
 
 void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
@@ -160,13 +163,6 @@ void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
   seq << playBoardwalk << playCoral << playOverfishing << playAerialImages
       << playAcidification << playSF << playBoat;
 
-  playingVideo.registerChangeCallback([&](float value) {
-    if (value == 1.0) {
-      state.videoPlaying = true;
-    } else {
-      state.videoPlaying = false;
-    }
-  });
   playAerialImages.registerChangeCallback([&](float value) {
     videoToLoad.set("aerialimages_+_sf (1080p).mp4");
     playingVideo.set(1.0);

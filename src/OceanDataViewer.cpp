@@ -18,10 +18,37 @@ void OceanDataViewer::init(const SearchPaths &paths) {
   }
 }
 
-void OceanDataViewer::create() {
-  shaderManager.add("sphere", "common.vert", "sphere.frag");
-  shaderManager.add("data", "common.vert", "data.frag");
-  shaderManager.add("video", "common.vert", "video.frag");
+void OceanDataViewer::create(Lens &lens) {
+  shaderManager.add("space", "mono.vert", "space.frag");
+  shaderManager.add("data", "stereo.vert", "data.frag");
+  shaderManager.add("co2", "stereo.vert", "co2.frag");
+
+  auto &spaceShader = shaderManager.get("space");
+  spaceShader.begin();
+  spaceShader.uniform("texSpace", 0);
+  spaceShader.uniform("blend", 1.f);
+  spaceShader.end();
+
+  auto &dataShader = shaderManager.get("data");
+  dataShader.begin();
+  dataShader.uniform("eye_sep", 0.f);
+  dataShader.uniform("foc_len", lens.focalLength());
+  dataShader.uniform("texEarth", 0);
+  dataShader.uniform("texData", 1);
+  dataShader.uniform("validData", 0.f);
+  dataShader.uniform("blend", 1.f);
+  dataShader.end();
+
+  auto &co2Shader = shaderManager.get("co2");
+  co2Shader.begin();
+  co2Shader.uniform("eye_sep", 0.f);
+  co2Shader.uniform("foc_len", lens.focalLength());
+  co2Shader.uniform("texEarth", 0);
+  co2Shader.uniform("texY", 1);
+  co2Shader.uniform("texU", 2);
+  co2Shader.uniform("texV", 3);
+  co2Shader.uniform("blend", 1.f);
+  co2Shader.end();
 
   addTexSphere(earthMesh, 2, 50, false);
   earthMesh.update();
@@ -101,30 +128,14 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
     state.nasa_year = nasaYear;
     state.chi_year = chiYear;
 
-    state.swtch[0] = s_sst;
-    state.swtch[1] = s_carbon;
-    state.swtch[2] = s_chl;
-    state.swtch[3] = s_flh;
-    state.swtch[4] = s_fish;
-    state.swtch[5] = s_shp;
-    state.swtch[6] = s_oa;
-    // state.swtch[6] = s_plastics;
-    // state.swtch[7] = s_resiliency;
-    state.swtch[7] = s_slr;
-    state.cloud_swtch[0] = s_cloud;
-    state.cloud_swtch[1] = s_cloud_eu;
-    state.cloud_swtch[2] = s_cloud_storm;
-    state.co2_swtch = s_co2;
-    state.co2Playing = s_co2_vid;
-
-    if (state.co2Playing) {
+    if (show_co2.get()) {
       state.co2_clock += dt;
     }
   } else {
     nav.set(state.global_pose);
   }
 
-  if (state.co2Playing) {
+  if (show_co2.get()) {
     MediaFrame *frame;
     if (videoDecoder != NULL) {
       frame = videoDecoder->getVideoFrame(state.co2_clock);
@@ -134,97 +145,73 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
         texV.submit(frame->dataV.data());
         videoDecoder->gotVideoFrame();
       } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
-        state.co2_clock = 0;
+        if (isPrimary) {
+          state.co2_clock = 0;
+        }
         videoDecoder->seek(0);
       }
     }
   }
 }
 
-void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state) {
-  if (state.videoPlaying) {
-    return;
-  }
+void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
+  g.clear();
 
-  g.clear(0);
-
-  gl::depthFunc(GL_LEQUAL);
-  g.culling(false);
   g.depthTesting(true);
-  g.blending(true);
-  g.blendTrans();
 
-  // auto &shaderSphere = shaderManager.get("sphere");
-  // g.shader(shaderSphere);
-  // shaderSphere.uniform("tex0", 0);
-  g.texture();
+  // space
+  auto &spaceShader = shaderManager.get("space");
+  g.shader(spaceShader);
+  spaceShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
+  spaceShader.uniform("blend", blend.get());
 
-  // sky
   g.pushMatrix();
   spaceTex.bind(0);
   g.translate(nav.pos());
-  g.rotate(nav.quat()); // keeps sky still
+  g.rotate(nav.quat()); // keeps space still
   g.draw(spaceMesh);
   spaceTex.unbind(0);
   g.popMatrix();
 
+  // earth
   g.pushMatrix();
-  // inside sphere
+  earthTex.bind(0);
+
+  // inside earth
   if (nav.pos().mag() < 2.01f) {
     g.scale(-1, 1, 1);
   }
 
-  // sphere (earth)
-  earthTex.bind(0);
-  g.draw(earthMesh); // only needed if we go inside the earth
-  earthTex.unbind(0);
+  if (!show_co2.get()) {
+    auto &dataShader = shaderManager.get("data");
+    g.shader(dataShader);
+    dataShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
+    dataShader.uniform("blend", blend.get());
 
-  //  co2 frames
-  if (state.co2Playing) {
-    auto &shaderVideo = shaderManager.get("video");
-    g.shader(shaderVideo);
-    texY.bind(0);
-    texU.bind(1);
-    texV.bind(2);
-    shaderVideo.uniform("texY", 0);
-    shaderVideo.uniform("texU", 1);
-    shaderVideo.uniform("texV", 2);
-    g.draw(earthMesh);
-    texY.unbind(0);
-    texU.unbind(1);
-    texV.unbind(2);
-  }
-
-  auto &shaderDataset = shaderManager.get("data");
-  g.shader(shaderDataset);
-  int bind_index = 0;
-  for (int j = 0; j < data::num_stressors; j++) {
-    if (state.swtch[j]) {
-      int offset = 2013;
-      float year = state.nasa_year;
-      if (j >= 4) {
-        offset = 2003;
-        year = state.chi_year;
-      }
-      pic[(int)year - offset][j].bind(bind_index);
-      std::string texIndex = "tex" + std::to_string(bind_index);
-      shaderDataset.uniform(texIndex.c_str(), bind_index);
-      if (++bind_index > 3) {
-        break;
-      }
+    if (show_oa.get()) {
+      dataShader.uniform("validData", 1.f);
+      pic[0][6].bind(1);
+      g.draw(earthMesh);
+      pic[0][6].unbind(1);
+    } else {
+      dataShader.uniform("validData", 0.f);
+      g.draw(earthMesh);
     }
+  } else {
+    auto &co2Shader = shaderManager.get("co2");
+    g.shader(co2Shader);
+    co2Shader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
+    co2Shader.uniform("blend", blend.get());
+    texY.bind(1);
+    texU.bind(2);
+    texV.bind(3);
+    g.draw(earthMesh);
+    texY.unbind(1);
+    texU.unbind(2);
+    texV.unbind(3);
   }
-  shaderDataset.uniform("dataNum", (float)bind_index);
-  g.draw(earthMesh);
 
-  // draw cloud
-  // for (int j = 0; j < num_cloud; j++) {
-  //   if (state.cloud_swtch[j]) {
-  //     cloud[j].bind();
-  //     g.draw(earthMesh);
-  //   }
-  // }
-
+  earthTex.unbind(0);
   g.popMatrix();
 }
 
@@ -336,20 +323,22 @@ void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
   gui << nasaYear << chiYear;
   gui << cycleYears;
   gui << rotateGlobe << faceTo << animateCam;
-  gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
-  gui << s_fish << s_shp << s_plastics << s_resiliency;
-  gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
+  gui << show_carbon << show_slr << show_chl << show_flh << show_oa << show_sst;
+  gui << show_fish << show_ship;
+  gui << show_clouds << show_co2;
 
   presets << nasaYear << blend;
   presets << cycleYears << rotateGlobe;
-  presets << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
-  presets << s_fish << s_shp << s_plastics << s_resiliency;
-  presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
+  presets << show_carbon << show_slr << show_chl << show_flh << show_oa
+          << show_sst;
+  presets << show_fish << show_ship;
+  presets << show_clouds << show_co2;
 
   seq << geoCoord << cycleYears << rotateGlobe << faceTo << blend;
-  seq << s_carbon << s_slr << s_shp << s_chl << s_flh << s_oa << s_sst;
-  seq << s_fish << s_plastics << s_resiliency;
-  seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
+  seq << show_carbon << show_slr << show_ship << show_chl << show_flh << show_oa
+      << show_sst;
+  seq << show_fish;
+  seq << show_clouds << show_co2;
 
   geoCoord.registerChangeCallback(
       [&](Vec3f v) { setNavTarget(v.x, v.y, v.z); });

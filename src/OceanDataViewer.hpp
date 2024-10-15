@@ -14,9 +14,9 @@ using namespace al;
 
 struct OceanDataViewer {
   void init(const SearchPaths &paths);
-  void create();
+  void create(Lens &lens);
   void update(double dt, Nav &nav, State &state, bool isPrimary);
-  void draw(Graphics &g, Nav &nav, State &state);
+  void draw(Graphics &g, Nav &nav, State &state, Lens &lens);
 
   float easeIn(float _value, float _target, float _speed);
   void setNavTarget(float lat, float lon, float alt = 3.2);
@@ -39,6 +39,9 @@ struct OceanDataViewer {
 
   std::string dataPath;
 
+  // TODO: add blend to shaders
+  Parameter blend{"blend", "", 1.0, 0.0, 1.0};
+
   ParameterVec3 geoCoord{"geoCoord", "Nav"};
   ParameterBool rotateGlobe{"Rotate_Globe", "", 0.0};
   ParameterBool faceTo{"Face_Center", "Nav", 1.0};
@@ -51,28 +54,18 @@ struct OceanDataViewer {
   Parameter nasaYear{"NASAYear", 2013, 2013, 2023};
   Parameter chiYear{"CHIYear", 2003, 2003, 2013};
 
+  Texture cloud[data::num_clouds];
   Texture pic[data::years_nasa][data::num_stressors];
   bool loaded[data::years_nasa][data::num_stressors];
 
-  Texture cloud[data::num_clouds];
-  float morph_year;
-
-  // TODO: add blend to shaders
-  Parameter blend{"blend", "", 1.0, 0.0, 1.0};
-
-  ParameterBool s_shp{"Shipping", "", 0.0};
-  ParameterBool s_carbon{"Ocean_Carbon", "", 0.0};
-  ParameterBool s_slr{"Sea_level_rise", "", 0.0};
-  ParameterBool s_chl{"Chlorophyll_Concentration", "", 0.0};
-  ParameterBool s_flh{"Fluorescence_Line_Height", "", 0.0};
-  ParameterBool s_oa{"Ocean_acidification", "", 0.0};
-  ParameterBool s_sst{"Sea_surface_temperature", "", 0.0};
-  ParameterBool s_fish{"Over-fishing", "", 0.0};
-  ParameterBool s_plastics{"Plastics", "", 0.0};
-  ParameterBool s_resiliency{"Resiliency_Map", "", 0.0};
-  ParameterBool s_cloud{"Clouds", "", 0.0};
-  ParameterBool s_cloud_storm{"Clouds_Storm", "", 0.0};
-  ParameterBool s_cloud_eu{"Clouds_EU", "", 0.0};
-  ParameterBool s_co2{"CO2", "", 0.0};
-  ParameterBool s_co2_vid{"CO2-Video", "", 0.0};
+  ParameterBool show_sst{"Sea_surface_temperature", "", 0.0};
+  ParameterBool show_carbon{"Ocean_Carbon", "", 0.0};
+  ParameterBool show_chl{"Chlorophyll_Concentration", "", 0.0};
+  ParameterBool show_flh{"Fluorescence_Line_Height", "", 0.0};
+  ParameterBool show_fish{"Over-fishing", "", 0.0};
+  ParameterBool show_ship{"Shipping", "", 0.0};
+  ParameterBool show_oa{"Ocean_acidification", "", 0.0};
+  ParameterBool show_slr{"Sea_level_rise", "", 0.0};
+  ParameterBool show_clouds{"Clouds", "", 0.0};
+  ParameterBool show_co2{"CO2", "", 0.0};
 };

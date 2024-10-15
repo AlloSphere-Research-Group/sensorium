@@ -15,9 +15,9 @@ using namespace al;
 struct VideoPlayer {
   void init(const SearchPaths &paths);
   void create();
-  void update(al_sec dt, State &state, bool isPrimary);
-  void draw(Graphics &g, Nav &nav, State &state, Lens &lens, bool isPrimary);
-  void loadVideoFile(State &state, bool isPrimary);
+  void update(al_sec dt, Nav &nav, State &state, bool isPrimary);
+  bool draw(Graphics &g, bool isPrimary);
+  bool loadVideoFile();
   void registerParams(ControlGUI &gui, PresetHandler &presets,
                       PresetSequencer &seq, State &state);
 

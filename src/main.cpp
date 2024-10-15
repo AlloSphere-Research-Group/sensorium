@@ -46,9 +46,9 @@ struct SensoriumApp : DistributedAppWithState<State> {
     audioPlayer.init();
 
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.videoPose << videoPlayer.videoScale
-                      << videoPlayer.videoToLoad << videoPlayer.videoBlend
-                      << oceanDataViewer.blend;
+    parameterServer() << videoPlayer.playingVideo << videoPlayer.videoToLoad
+                      << videoPlayer.videoPose << videoPlayer.videoScale
+                      << videoPlayer.videoBlend << oceanDataViewer.blend;
   }
 
   void onCreate() {
@@ -60,7 +60,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
     // navControl().vscale(0.125 * 0.1 * 0.5);
     // navControl().tscale(2 * 0.1 * 0.5);
 
-    oceanDataViewer.create();
+    oceanDataViewer.create(lens());
     // videoPlayer.create();
 
     // Initialize GUI and Parameter callbacks
@@ -82,14 +82,15 @@ struct SensoriumApp : DistributedAppWithState<State> {
 
   void onAnimate(double dt) {
     oceanDataViewer.update(dt, nav(), state(), isPrimary());
-    // videoPlayer.update(dt, state(), isPrimary());
+    // videoPlayer.update(dt, nav(), state(), isPrimary());
   }
 
   // void onSound(AudioIOData &io) { audioPlayer.onSound(io); }
 
   void onDraw(Graphics &g) {
-    oceanDataViewer.draw(g, nav(), state());
-    // videoPlayer.draw(g, nav(), state(), lens(), isPrimary());
+    // if (!videoPlayer.draw(g, isPrimary())) {
+    oceanDataViewer.draw(g, nav(), state(), lens());
+    // }
   }
 
   bool onKeyDown(const Keyboard &k) {
