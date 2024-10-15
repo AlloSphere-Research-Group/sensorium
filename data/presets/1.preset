@@ -1,5 +1,4 @@
 ::1
-/2003_2013 i 0 
 /Audio_Volume f 0.600000 
 /CO2 i 0 
 /Clouds i 0 
@@ -23,7 +22,6 @@
 /Sub_Volume f 0.600000 
 /Year f 2003.000000
 /videoBlend f 1.000000 
-/camPose fffffff 23.698849 0.000000 -43.574905 0.246493 0.000000 0.969144 0.000000 
 /playingVideo i 0 
 /renderVideoInSim i 1 
 ::

@@ -19,7 +19,7 @@ struct OceanDataViewer {
   void draw(Graphics &g, Nav &nav, State &state);
 
   float easeIn(float _value, float _target, float _speed);
-  void setGeoTarget(float la, float lo, float r = 3.2);
+  void setNavTarget(float lat, float lon, float alt = 3.2);
 
   void registerParams(ControlGUI &gui, PresetHandler &presets,
                       PresetSequencer &seq, State &state, Nav &nav);
@@ -39,24 +39,26 @@ struct OceanDataViewer {
 
   std::string dataPath;
 
-
-
-  ParameterVec3 llr{"llr", "Nav"};
-  ParameterPose camPose{"camPose", "Nav"};
-  
+  ParameterVec3 geoCoord{"geoCoord", "Nav"};
+  ParameterBool rotateGlobe{"Rotate_Globe", "", 0.0};
   ParameterBool faceTo{"Face_Center", "Nav", 1.0};
   ParameterBool animateCam{"animateCam", "Nav", 0.0};
-
   Pose navTarget;
   float anim_speed = 0.0;
   float anim_target_speed = 0.002;
 
+  ParameterBool cycleYears{"CycleYears", "", 0.0};
+  Parameter nasaYear{"NASAYear", 2013, 2013, 2023};
+  Parameter chiYear{"CHIYear", 2003, 2003, 2013};
+
+  Texture pic[data::years_nasa][data::num_stressors];
+  bool loaded[data::years_nasa][data::num_stressors];
+
+  Texture cloud[data::num_clouds];
+  float morph_year;
+
+  // TODO: add blend to shaders
   Parameter blend{"blend", "", 1.0, 0.0, 1.0};
-
-  Parameter year{"Year", 2013, 2013, 2023};
-  Parameter chiyear{"CHIYear", 2003, 2003, 2013};
-
-  Parameter gain{"Audio", "Sound", 0, 0, 2};
 
   ParameterBool s_shp{"Shipping", "", 0.0};
   ParameterBool s_carbon{"Ocean_Carbon", "", 0.0};
@@ -73,21 +75,4 @@ struct OceanDataViewer {
   ParameterBool s_cloud_eu{"Clouds_EU", "", 0.0};
   ParameterBool s_co2{"CO2", "", 0.0};
   ParameterBool s_co2_vid{"CO2-Video", "", 0.0};
-  ParameterBool s_nav{"Explore_Globe", "", 0.0};
-  ParameterBool s_years{"CycleYears", "", 0.0};
-
-
-  
-
-
-  Texture pic[years][stressors];
-  bool loaded[years][stressors];
-
-  Texture cloud[num_cloud];
-  float morph_year;
-
-
-
-
-  
 };

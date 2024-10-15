@@ -46,7 +46,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
     audioPlayer.init();
 
     // synchronizes attached params accross renderers
-    parameterServer() << videoPlayer.renderPose << videoPlayer.renderScale
+    parameterServer() << videoPlayer.videoPose << videoPlayer.videoScale
                       << videoPlayer.videoToLoad << videoPlayer.videoBlend
                       << oceanDataViewer.blend;
   }
@@ -65,10 +65,6 @@ struct SensoriumApp : DistributedAppWithState<State> {
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
-      // TODO: review state
-      state().global_clock = 0;
-      state().videoPlaying = false;
-
       sequencer.setDirectory("data/presets");
       recorder.setDirectory("data/presets");
 

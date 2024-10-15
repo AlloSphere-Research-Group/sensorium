@@ -6,7 +6,7 @@
 
 
 # fly over germany, animate sea level rise
-+0.1:/Nav/llr:53.5,9.95,2.5
++0.1:/Nav/geoCoord:53.5,9.95,2.5
 +5.0:/Sea_level_rise:1
 +0.1:/Ocean_Carbon:1
 +0.1:/CycleYears:1
@@ -45,7 +45,7 @@
 
 +48.0:/Sea_level_rise:0
 #+0.1:/Face_Center:1
-+0.1:/Nav/llr:0,138,0.01
++0.1:/Nav/geoCoord:0,138,0.01
 +0.1:/videoBlend:0.0:3.0
 +3.0:/playingVideo:0.0
 +1.0:/blend:1.0:3.0
@@ -70,22 +70,22 @@
 
 
 # wait 5 fly back out
-+5.0:/Nav/llr:33,-118,10
++5.0:/Nav/geoCoord:33,-118,10
 +0.1:/Explore_Globe:1
 +0.1:/Face_Center:1
 
-+20.0:/Nav/llr:0,-80,30
++20.0:/Nav/geoCoord:0,-80,30
 
 
 
 # globe locations
-#+0.1:/Nav/llr:33,-118,5
-#+0.1:/Nav/llr:53.5,9.95,3.5
-#+0.1:/Nav/llr:54.4,12.59,3.5
-#+0.1:/Nav/llr:53.9,9.53,3.5
-#+0.1:/Nav/llr:53.78,9.41,3.5
-#+0.1:/Nav/llr:0,-80,30
-#+0.1:/Nav/llr:0,138,0.01
+#+0.1:/Nav/geoCoord:33,-118,5
+#+0.1:/Nav/geoCoord:53.5,9.95,3.5
+#+0.1:/Nav/geoCoord:54.4,12.59,3.5
+#+0.1:/Nav/geoCoord:53.9,9.53,3.5
+#+0.1:/Nav/geoCoord:53.78,9.41,3.5
+#+0.1:/Nav/geoCoord:0,-80,30
+#+0.1:/Nav/geoCoord:0,138,0.01
 
 # video fade out and in example
 #+0.1:/Play_AerialImages:1.0

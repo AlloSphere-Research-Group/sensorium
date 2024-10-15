@@ -57,12 +57,12 @@ void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
 
   if (state.videoPlaying) {
     if (isPrimary) {
-      state.global_clock += dt;
+      state.video_clock += dt;
     }
 
     MediaFrame *frame;
     if (videoDecoder != nullptr) {
-      frame = videoDecoder->getVideoFrame(state.global_clock);
+      frame = videoDecoder->getVideoFrame(state.video_clock);
       if (frame) {
         texY.submit(frame->dataY.data());
         texU.submit(frame->dataU.data());
@@ -70,7 +70,7 @@ void VideoPlayer::update(al_sec dt, State &state, bool isPrimary) {
         videoDecoder->gotVideoFrame();
       } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
         if (isPrimary) {
-          state.global_clock = 0;
+          state.video_clock = 0;
         }
         videoDecoder->seek(0);
       }
@@ -86,7 +86,7 @@ void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, Lens &lens,
     return;
   }
 
-  nav.setIdentity();
+  nav.home();
 
   auto &videoShader = shaderManager.get("video");
 
@@ -100,9 +100,9 @@ void VideoPlayer::draw(Graphics &g, Nav &nav, State &state, Lens &lens,
   texV.bind(2);
 
   g.pushMatrix();
-  g.translate(renderPose.get().pos());
-  g.rotate(renderPose.get().quat());
-  g.scale(renderScale.get());
+  g.translate(videoPose.get().pos());
+  g.rotate(videoPose.get().quat());
+  g.scale(videoScale.get());
   g.draw(sphereMesh);
   g.popMatrix();
 
@@ -143,7 +143,7 @@ void VideoPlayer::loadVideoFile(State &state, bool isPrimary) {
   texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 
   if (isPrimary)
-    state.global_clock = 0.0;
+    state.video_clock = 0.0;
 }
 
 void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
@@ -152,7 +152,7 @@ void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
   gui << playAerialImages << playSF;
   gui << playBoardwalk << playCoral;
   gui << playOverfishing << playAcidification << playBoat;
-  gui << renderPose << renderScale;
+  gui << videoPose << videoScale;
 
   presets << renderVideoInSim << playingVideo << videoBlend;
 
@@ -181,7 +181,6 @@ void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
   });
   playCoral.registerChangeCallback([&](float value) {
     videoToLoad.set("Sensorium_Mono_Final_Comped_02_1080p.mov");
-    // videoToLoad.set("Sensorium_Mono_Final_Comped_02.mov");
     playingVideo.set(1.0);
   });
   playOverfishing.registerChangeCallback([&](float value) {

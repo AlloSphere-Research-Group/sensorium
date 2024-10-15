@@ -34,8 +34,8 @@ struct VideoPlayer {
   ParameterBool renderVideoInSim{"renderVideoInSim", "", 0.0};
 
   Parameter videoBlend{"videoBlend", "", 1.0, 0.0, 1.0};
-  ParameterPose renderPose{"renderPose", "", Pose(Vec3d(0, 0, 0))};
-  ParameterVec3 renderScale{"renderScale", "", Vec3f(1, 1, 1)};
+  ParameterPose videoPose{"videoPose", "", Pose(Vec3d(0, 0, 0))};
+  ParameterVec3 videoScale{"videoScale", "", Vec3f(1, 1, 1)};
 
   Trigger playAerialImages{"Play_AerialImages", ""};
   Trigger playSF{"Play_SF", ""};

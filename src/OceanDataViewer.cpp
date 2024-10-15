@@ -60,6 +60,10 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
   shaderManager.update();
 
   if (isPrimary) {
+    if (rotateGlobe.get()) {
+      nav.moveR(0.003 * dt);
+    }
+
     if (faceTo.get()) {
       // examplary point that you want to see
       Vec3f targetPoint = Vec3f(0, 0, 0);
@@ -80,41 +84,23 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
       }
     }
 
-    Vec3d pos = nav.pos();
-    pos.normalize();
+    if (cycleYears.get()) {
+      nasaYear.setNoCalls(nasaYear.get() + 3.f * dt);
+      chiYear.setNoCalls(chiYear.get() + 3.f * dt);
 
-    // Molph year time
-    if (state.molph) {
-      year = year + 3 * dt;
-      chiyear = chiyear + 3 * dt;
-
-      if (year == 2023) {
-        year = 2013;
-        // state.molph = false;
-        s_years.set(1);
+      if (nasaYear.get() == 2023) {
+        nasaYear.setNoCalls(2013);
       }
-      if (chiyear == 2013) {
-        chiyear = 2003;
-        // state.molph = false;
-        s_years.set(1);
+      if (chiYear.get() == 2013) {
+        chiYear.setNoCalls(2003);
       }
-    }
-    // Molph frame time
-    if (state.molphFrame) {
-      if (year == 0) {
-        year = 0;
-        state.molphFrame = false;
-        // s_frames.set(1);
-      }
-    }
-    if (s_nav) {
-      nav.moveR(0.003 * 0.25);
     }
 
     // Assign shared states for renderers
     state.global_pose.set(nav);
-    state.year = year;
-    state.chiyear = chiyear;
+    state.nasa_year = nasaYear;
+    state.chi_year = chiYear;
+
     state.swtch[0] = s_sst;
     state.swtch[1] = s_carbon;
     state.swtch[2] = s_chl;
@@ -137,8 +123,6 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
   } else {
     nav.set(state.global_pose);
   }
-
-  camPose.setNoCalls(nav);
 
   if (state.co2Playing) {
     MediaFrame *frame;
@@ -214,13 +198,13 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state) {
   auto &shaderDataset = shaderManager.get("data");
   g.shader(shaderDataset);
   int bind_index = 0;
-  for (int j = 0; j < stressors; j++) {
+  for (int j = 0; j < data::num_stressors; j++) {
     if (state.swtch[j]) {
       int offset = 2013;
-      float year = state.year;
+      float year = state.nasa_year;
       if (j >= 4) {
         offset = 2003;
-        year = state.chiyear;
+        year = state.chi_year;
       }
       pic[(int)year - offset][j].bind(bind_index);
       std::string texIndex = "tex" + std::to_string(bind_index);
@@ -250,11 +234,11 @@ float OceanDataViewer::easeIn(float _value, float _target, float _speed) {
   return x;
 }
 
-void OceanDataViewer::setGeoTarget(float la, float lo, float r) {
-  navTarget.pos(Vec3d(-r * cos(la / 180.0 * M_PI) * sin(lo / 180.0 * M_PI),
-                      r * sin(la / 180.0 * M_PI),
-                      -r * cos(la / 180.0 * M_PI) * cos(lo / 180.0 * M_PI)));
-
+void OceanDataViewer::setNavTarget(float lat, float lon, float alt) {
+  navTarget.pos(
+      Vec3d(-alt * cos(lat / 180.0 * M_PI) * sin(lon / 180.0 * M_PI),
+            alt * sin(lat / 180.0 * M_PI),
+            -alt * cos(lat / 180.0 * M_PI) * cos(lon / 180.0 * M_PI)));
   navTarget.faceToward(Vec3d(0), Vec3d(0, 1, 0));
   animateCam = true;
   anim_speed = anim_speed / 5;
@@ -284,7 +268,7 @@ void OceanDataViewer::loadDataset(const std::string &pathPrefix,
                                   int stressorIndex) {
   Image oceanData;
   std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
-  for (int d = 0; d < years; d++) {
+  for (int d = 0; d < data::years_nasa; d++) {
     std::ostringstream ostr;
     ostr << dataPath << pathPrefix << d + 2012 << ".png";
     oceanData = Image(ostr.str());
@@ -303,7 +287,7 @@ void OceanDataViewer::loadChiDataset(const std::string &prefix,
                                      int stressorIndex) {
   Image oceanData;
   std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
-  for (int d = 0; d < chiyears; d++) {
+  for (int d = 0; d < data::years_chi; d++) {
     std::ostringstream ostr;
     ostr << dataPath << prefix << d + 2003 << postfix;
 
@@ -348,36 +332,32 @@ void OceanDataViewer::loadCO2Dataset(const std::string &video) {
 void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
                                      PresetSequencer &seq, State &state,
                                      Nav &nav) {
-  gui << blend;           // << year << gain;
-  gui << year << chiyear; // << frame;
-  gui << s_years;         // << s_frames;
-  gui << s_nav << faceTo << animateCam;
+  gui << blend;
+  gui << nasaYear << chiYear;
+  gui << cycleYears;
+  gui << rotateGlobe << faceTo << animateCam;
   gui << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
   gui << s_fish << s_shp << s_plastics << s_resiliency;
   gui << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
 
-  presets << year << camPose << blend;
-  presets << s_years << s_nav;
+  presets << nasaYear << blend;
+  presets << cycleYears << rotateGlobe;
   presets << s_carbon << s_slr << s_chl << s_flh << s_oa << s_sst;
   presets << s_fish << s_shp << s_plastics << s_resiliency;
   presets << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
 
-  seq << llr << s_years << s_nav << camPose << faceTo << blend;
+  seq << geoCoord << cycleYears << rotateGlobe << faceTo << blend;
   seq << s_carbon << s_slr << s_shp << s_chl << s_flh << s_oa << s_sst;
   seq << s_fish << s_plastics << s_resiliency;
   seq << s_cloud << s_cloud_storm << s_cloud_eu << s_co2 << s_co2_vid;
 
-  camPose.registerChangeCallback([&](Pose p) { nav.set(p); });
-  llr.registerChangeCallback([&](Vec3f v) { setGeoTarget(v.x, v.y, v.z); });
+  geoCoord.registerChangeCallback(
+      [&](Vec3f v) { setNavTarget(v.x, v.y, v.z); });
 
-  s_years.registerChangeCallback([&](int value) {
-    if (value) {
-      state.molph = true; //! state.molph;
-      year = 2012;
-      chiyear = 2003;
-      // s_years.set(0);
-    } else {
-      state.molph = false;
+  cycleYears.registerChangeCallback([&](float value) {
+    if (value > 0) {
+      nasaYear.setNoCalls(2013);
+      chiYear.setNoCalls(2003);
     }
   });
 }
