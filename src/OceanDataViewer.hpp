@@ -39,8 +39,7 @@ struct OceanDataViewer {
 
   std::string dataPath;
 
-  // TODO: add blend to shaders
-  Parameter blend{"blend", "", 1.0, 0.0, 1.0};
+  Parameter dataBlend{"dataBlend", "", 1.0, 0.0, 1.0};
 
   ParameterVec3 geoCoord{"geoCoord", "Nav"};
   ParameterBool rotateGlobe{"Rotate_Globe", "", 0.0};

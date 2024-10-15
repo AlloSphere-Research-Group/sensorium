@@ -3,7 +3,7 @@ uniform sampler2D texEarth;
 uniform sampler2D texY;
 uniform sampler2D texU;
 uniform sampler2D texV;
-uniform float blend;
+uniform float dataBlend;
 
 in vec2 var_texcoord;
 layout(location = 0) out vec4 fragColor;
@@ -24,5 +24,5 @@ void main() {
 
   pixel = mix(earthPixel, pixel, pixel.a);
 
-  fragColor = blend * pixel;
+  fragColor = dataBlend * pixel;
 }

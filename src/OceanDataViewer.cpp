@@ -26,7 +26,7 @@ void OceanDataViewer::create(Lens &lens) {
   auto &spaceShader = shaderManager.get("space");
   spaceShader.begin();
   spaceShader.uniform("texSpace", 0);
-  spaceShader.uniform("blend", 1.f);
+  spaceShader.uniform("dataBlend", 1.f);
   spaceShader.end();
 
   auto &dataShader = shaderManager.get("data");
@@ -36,7 +36,7 @@ void OceanDataViewer::create(Lens &lens) {
   dataShader.uniform("texEarth", 0);
   dataShader.uniform("texData", 1);
   dataShader.uniform("validData", 0.f);
-  dataShader.uniform("blend", 1.f);
+  dataShader.uniform("dataBlend", 1.f);
   dataShader.end();
 
   auto &co2Shader = shaderManager.get("co2");
@@ -47,7 +47,7 @@ void OceanDataViewer::create(Lens &lens) {
   co2Shader.uniform("texY", 1);
   co2Shader.uniform("texU", 2);
   co2Shader.uniform("texV", 3);
-  co2Shader.uniform("blend", 1.f);
+  co2Shader.uniform("dataBlend", 1.f);
   co2Shader.end();
 
   addTexSphere(earthMesh, 2, 50, false);
@@ -163,7 +163,7 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
   auto &spaceShader = shaderManager.get("space");
   g.shader(spaceShader);
   spaceShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
-  spaceShader.uniform("blend", blend.get());
+  spaceShader.uniform("dataBlend", dataBlend.get());
 
   g.pushMatrix();
   spaceTex.bind(0);
@@ -186,7 +186,7 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
     auto &dataShader = shaderManager.get("data");
     g.shader(dataShader);
     dataShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
-    dataShader.uniform("blend", blend.get());
+    dataShader.uniform("dataBlend", dataBlend.get());
 
     if (show_oa.get()) {
       dataShader.uniform("validData", 1.f);
@@ -201,7 +201,7 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
     auto &co2Shader = shaderManager.get("co2");
     g.shader(co2Shader);
     co2Shader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
-    co2Shader.uniform("blend", blend.get());
+    co2Shader.uniform("dataBlend", dataBlend.get());
     texY.bind(1);
     texU.bind(2);
     texV.bind(3);
@@ -319,7 +319,7 @@ void OceanDataViewer::loadCO2Dataset(const std::string &video) {
 void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
                                      PresetSequencer &seq, State &state,
                                      Nav &nav) {
-  gui << blend;
+  gui << dataBlend;
   gui << nasaYear << chiYear;
   gui << cycleYears;
   gui << rotateGlobe << faceTo << animateCam;
@@ -327,14 +327,14 @@ void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
   gui << show_fish << show_ship;
   gui << show_clouds << show_co2;
 
-  presets << nasaYear << blend;
+  presets << nasaYear << dataBlend;
   presets << cycleYears << rotateGlobe;
   presets << show_carbon << show_slr << show_chl << show_flh << show_oa
           << show_sst;
   presets << show_fish << show_ship;
   presets << show_clouds << show_co2;
 
-  seq << geoCoord << cycleYears << rotateGlobe << faceTo << blend;
+  seq << geoCoord << cycleYears << rotateGlobe << faceTo << dataBlend;
   seq << show_carbon << show_slr << show_ship << show_chl << show_flh << show_oa
       << show_sst;
   seq << show_fish;

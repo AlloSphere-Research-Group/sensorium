@@ -48,7 +48,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
     // synchronizes attached params accross renderers
     parameterServer() << videoPlayer.playingVideo << videoPlayer.videoToLoad
                       << videoPlayer.videoPose << videoPlayer.videoScale
-                      << videoPlayer.videoBlend << oceanDataViewer.blend;
+                      << videoPlayer.videoBlend << oceanDataViewer.dataBlend;
   }
 
   void onCreate() {

@@ -15,7 +15,7 @@
 #+0.1:/Play_Water:1.0
 
 # 1:17 - dt 
-+42.0:/blend:0.0:2.0
++42.0:/dataBlend:0.0:2.0
 +2.0:/videoBlend:0.0:1.0
 +1.0:/Play_AerialImages:1.0
 +0.5:/videoBlend:1.0:3.0
@@ -48,7 +48,7 @@
 +0.1:/Nav/geoCoord:0,138,0.01
 +0.1:/videoBlend:0.0:3.0
 +3.0:/playingVideo:0.0
-+1.0:/blend:1.0:3.0
++1.0:/dataBlend:1.0:3.0
 
 
 # wait 5 show shipping
