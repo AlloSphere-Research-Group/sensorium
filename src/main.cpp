@@ -41,14 +41,17 @@ struct SensoriumApp : DistributedAppWithState<State> {
     searchPaths.addAppPaths();
     searchPaths.addRelativePath("src/shaders", true);
 
-    oceanDataViewer.init(searchPaths);
     videoPlayer.init(searchPaths);
+    oceanDataViewer.init(searchPaths);
     audioPlayer.init();
 
     // synchronizes attached params accross renderers
     parameterServer() << videoPlayer.playingVideo << videoPlayer.videoToLoad
                       << videoPlayer.videoPose << videoPlayer.videoScale
-                      << videoPlayer.videoBlend << oceanDataViewer.dataBlend;
+                      << videoPlayer.videoBlend;
+    parameterServer() << oceanDataViewer.dataIndex << oceanDataViewer.dataBlend
+                      << oceanDataViewer.show_co2
+                      << oceanDataViewer.show_clouds;
   }
 
   void onCreate() {
@@ -60,8 +63,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
     navControl().vscale(0.125 * 0.1 * 0.5);
     navControl().tscale(2 * 0.1 * 0.5);
 
-    oceanDataViewer.create(lens());
     videoPlayer.create();
+    oceanDataViewer.create(lens());
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
@@ -71,8 +74,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
       auto &gui = guiDomain->newGUI();
 
-      oceanDataViewer.registerParams(gui, presets, sequencer, state(), nav());
       videoPlayer.registerParams(gui, presets, sequencer, state());
+      oceanDataViewer.registerParams(gui, presets, sequencer, state(), nav());
       audioPlayer.registerParams(gui, presets, sequencer);
 
       sequencer << presets;
