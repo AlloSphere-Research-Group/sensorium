@@ -23,6 +23,6 @@ struct AudioPlayer {
   ParameterBool playLoop{"Loop_Audio", "", 1};
   ParameterBool pauseAudio{"Pause_Audio", "", 0};
   ParameterBool rewindAudio{"Rewind_Audio", "", 0};
-  Parameter AudioVolume{"Audio_Volume", 1.1, 0, 2.5};
-  Parameter SubVolume{"Sub_Volume", 0.5, 0, 2.5};
+  Parameter AudioVolume{"Audio_Volume", "", 1.1, 0, 2.5};
+  Parameter SubVolume{"Sub_Volume", "", 0.5, 0, 2.5};
 };

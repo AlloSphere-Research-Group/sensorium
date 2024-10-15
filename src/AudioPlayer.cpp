@@ -36,7 +36,7 @@ void AudioPlayer::onSound(AudioIOData &io) {
   if ((int)buffer2.size() < frames) {
     buffer2.resize(frames);
   }
-  
+
   audioPlayerTS.getFrames(frames, buffer.data(), (int)buffer.size());
   intro.getFrames(frames, buffer2.data(), (int)buffer2.size());
   int second = (channels < 2) ? 0 : 1;
@@ -77,10 +77,10 @@ void AudioPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
                                  PresetSequencer &seq) {
   gui << playIntro << playAudio << playLoop << pauseAudio << rewindAudio
       << AudioVolume << SubVolume;
-
-  presets << AudioVolume << SubVolume << playAudio << rewindAudio;
-  seq << playIntro << playAudio << pauseAudio << rewindAudio << AudioVolume
-      << SubVolume;
+  presets << playIntro << playAudio << playLoop << pauseAudio << rewindAudio
+          << AudioVolume << SubVolume;
+  seq << playIntro << playAudio << playLoop << pauseAudio << rewindAudio
+      << AudioVolume << SubVolume;
 
   playIntro.registerChangeCallback([&](float value) {
     if (value == 1.0) {

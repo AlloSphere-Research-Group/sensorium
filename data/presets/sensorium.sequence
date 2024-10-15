@@ -44,7 +44,7 @@
 # wait for back to globe
 
 +48.0:/Sea_level_rise:0
-#+0.1:/Face_Center:1
+#+0.1:/Nav/Face_Center:1
 +0.1:/Nav/geoCoord:0,138,0.01
 +0.1:/videoBlend:0.0:3.0
 +3.0:/playingVideo:0.0
@@ -53,7 +53,7 @@
 
 # wait 5 show shipping
 +5.0:/Shipping:1
-+0.1:/2003_2013:1
++0.1:/CycleYears:1
 
 # wait 5 show sst
 +5.0:/Shipping:0
@@ -61,18 +61,12 @@
 
 # wait 5 show sst
 +5.0:/Sea_surface_temperature:0
-+0.1:/Fishing_Pelagic_low-bycatch:1
-+0.1:/Fishing_Pelagic_high-bycatch:1
-
-# wait 5 show sst
-+5.0:/Fishing_Pelagic_low-bycatch:0
-+0.1:/Fishing_Pelagic_high-bycatch:0
-
++0.1:/Over-fishing:1
 
 # wait 5 fly back out
 +5.0:/Nav/geoCoord:33,-118,10
-+0.1:/Explore_Globe:1
-+0.1:/Face_Center:1
++0.1:/Nav/Rotate_Globe:1
++0.1:/Nav/Face_Center:1
 
 +20.0:/Nav/geoCoord:0,-80,30
 

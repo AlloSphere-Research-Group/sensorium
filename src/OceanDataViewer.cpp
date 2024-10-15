@@ -1,5 +1,6 @@
 #include "OceanDataViewer.hpp"
 #include "al/sphere/al_SphereUtils.hpp"
+#include <iterator>
 
 using namespace al;
 
@@ -34,9 +35,12 @@ void OceanDataViewer::create(Lens &lens) {
   dataShader.uniform("eye_sep", 0.f);
   dataShader.uniform("foc_len", lens.focalLength());
   dataShader.uniform("texEarth", 0);
-  dataShader.uniform("texData", 1);
+  dataShader.uniform("texCloud", 1);
+  dataShader.uniform("texData", 2);
   dataShader.uniform("validData", 0.f);
+  dataShader.uniform("index", 0.f);
   dataShader.uniform("dataBlend", 1.f);
+  dataShader.uniform("showCloud", 1.f);
   dataShader.end();
 
   auto &co2Shader = shaderManager.get("co2");
@@ -52,12 +56,14 @@ void OceanDataViewer::create(Lens &lens) {
 
   addTexSphere(earthMesh, 2, 50, false);
   earthMesh.update();
+  addTexSphere(spaceMesh, 50, 50, true);
+  spaceMesh.update();
 
   // visible earth, nasa
   // earthImage = Image(dataPath + "blue_marble_brighter.jpg");
   auto earthImage = Image(dataPath + "16k.jpg");
   if (earthImage.array().size() == 0) {
-    std::cerr << "failed to load sphere image" << std::endl;
+    std::cerr << "failed to load earth image" << std::endl;
   }
 
   earthTex.create2D(earthImage.width(), earthImage.height());
@@ -65,19 +71,26 @@ void OceanDataViewer::create(Lens &lens) {
   earthTex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
   earthTex.submit(earthImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
 
-  addTexSphere(spaceMesh, 50, 50, true);
-  spaceMesh.update();
-
   // paulbourke.net
   auto spaceImage = Image(dataPath + "Stellarium3.jpg");
   if (spaceImage.array().size() == 0) {
-    std::cerr << "failed to load background image" << std::endl;
+    std::cerr << "failed to load space image" << std::endl;
   }
 
   spaceTex.create2D(spaceImage.width(), spaceImage.height());
   spaceTex.filter(Texture::LINEAR);
   spaceTex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
   spaceTex.submit(spaceImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
+
+  auto cloudImage = Image(dataPath + "cloud/2.jpg");
+  if (cloudImage.array().size() == 0) {
+    std::cerr << "failed to load cloud image" << std::endl;
+  }
+
+  cloudTex.create2D(cloudImage.width(), cloudImage.height());
+  cloudTex.filter(Texture::LINEAR);
+  cloudTex.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  cloudTex.submit(cloudImage.array().data(), GL_RGBA, GL_UNSIGNED_BYTE);
 
   loadAllData();
 }
@@ -88,7 +101,7 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
 
   if (isPrimary) {
     if (rotateGlobe.get()) {
-      nav.moveR(0.003 * dt);
+      nav.nudgeR(0.03 * nav.pos().mag() * dt);
     }
 
     if (faceTo.get()) {
@@ -112,11 +125,11 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
     }
 
     if (cycleYears.get()) {
-      nasaYear.setNoCalls(nasaYear.get() + 3.f * dt);
-      chiYear.setNoCalls(chiYear.get() + 3.f * dt);
+      nasaYear.setNoCalls(nasaYear.get() + 2.f * dt);
+      chiYear.setNoCalls(chiYear.get() + 2.f * dt);
 
       if (nasaYear.get() == 2023) {
-        nasaYear.setNoCalls(2013);
+        nasaYear.setNoCalls(2012);
       }
       if (chiYear.get() == 2013) {
         chiYear.setNoCalls(2003);
@@ -125,8 +138,8 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
 
     // Assign shared states for renderers
     state.global_pose.set(nav);
-    state.nasa_year = nasaYear;
-    state.chi_year = chiYear;
+    state.nasa_index = (nasaYear - nasaYear.min()) / (data::years_nasa - 1);
+    state.chi_index = (chiYear - chiYear.min()) / (data::years_chi - 1);
 
     if (show_co2.get()) {
       state.co2_clock += dt;
@@ -162,7 +175,6 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
   // space
   auto &spaceShader = shaderManager.get("space");
   g.shader(spaceShader);
-  spaceShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
   spaceShader.uniform("dataBlend", dataBlend.get());
 
   g.pushMatrix();
@@ -187,16 +199,20 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
     g.shader(dataShader);
     dataShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
     dataShader.uniform("dataBlend", dataBlend.get());
-
-    if (show_oa.get()) {
+    dataShader.uniform("showCloud", show_clouds.get());
+    cloudTex.bind(1);
+    if (dataIndex.get() >= 0) {
+      float index = dataIndex.get() > 3 ? state.chi_index : state.nasa_index;
+      dataShader.uniform("index", index);
       dataShader.uniform("validData", 1.f);
-      pic[0][6].bind(1);
+      oceanData[dataIndex.get()].bind(2);
       g.draw(earthMesh);
-      pic[0][6].unbind(1);
+      oceanData[dataIndex.get()].unbind(2);
     } else {
       dataShader.uniform("validData", 0.f);
       g.draw(earthMesh);
     }
+    cloudTex.unbind(1);
   } else {
     auto &co2Shader = shaderManager.get("co2");
     g.shader(co2Shader);
@@ -232,65 +248,92 @@ void OceanDataViewer::setNavTarget(float lat, float lon, float alt) {
 }
 
 void OceanDataViewer::loadAllData() {
-  loadDataset("nasa/sst/", 0);    // SST
-  loadDataset("nasa/carbon/", 1); // Carbon
-  loadDataset("nasa/chl/", 2);    // Chlorophyll
-  loadDataset("nasa/flh/", 3);    // Fluroscene Line Height
+  loadDataNASA("nasa/sst/", 0);    // SST
+  loadDataNASA("nasa/carbon/", 1); // Carbon
+  loadDataNASA("nasa/chl/", 2);    // Chlorophyll
+  loadDataNASA("nasa/flh/", 3);    // Fluroscene Line Height
 
-  loadChiDataset("chi/fish/fph_100_", "_impact.png",
-                 4);                                  // Fishing demersal low
-  loadChiDataset("ship/shipping_", "_impact.png", 5); // Shipping
-  loadChiDataset("oa/oa_", "_impact.png", 6);         // Ocean Acidification
-  loadChiDataset("slr/slr_", "_impact.png", 7);       // Sea level rise
+  loadDataCHI("chi/fish/fph_100_", "_impact.png",
+              4);                                  // Over-Fishing
+  loadDataCHI("ship/shipping_", "_impact.png", 5); // Shipping
+  loadDataCHI("oa/oa_", "_impact.png", 6);         // Ocean Acidification
+  loadDataCHI("slr/slr_", "_impact.png", 7);       // Sea level rise
 
   // Co2 Video data
-  loadCO2Dataset(
+  loadDataCO2(
       "co2/"
       "SOS_TaggedCO2_4-1-2024a_co2_FF_quality_ScienceOnASphere_1024p30.mp4");
 
   std::cout << "Loaded Ocean data." << std::endl;
 }
 
-void OceanDataViewer::loadDataset(const std::string &pathPrefix,
-                                  int stressorIndex) {
-  Image oceanData;
-  std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
+void OceanDataViewer::loadDataNASA(const std::string &pathPrefix,
+                                   int stressorIndex) {
+  std::cout << "Loading stressorIndex: " << stressorIndex << std::endl;
+
+  unsigned int imageWidth, imageHeight;
+  std::vector<uint8_t> totalData;
   for (int d = 0; d < data::years_nasa; d++) {
     std::ostringstream ostr;
     ostr << dataPath << pathPrefix << d + 2012 << ".png";
-    oceanData = Image(ostr.str());
+    auto dataImage = Image(ostr.str());
+    if (d == 0) {
+      imageWidth = dataImage.width();
+      imageHeight = dataImage.height();
+      totalData.reserve(4 * imageWidth * imageHeight * data::years_nasa);
+    } else if (imageWidth != dataImage.width() ||
+               imageHeight != dataImage.height()) {
+      std::cerr << "Image dimensions do not match" << std::endl;
+      return;
+    }
 
-    pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
-    pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA,
-                                 GL_UNSIGNED_BYTE);
-    pic[d][stressorIndex].wrap(Texture::REPEAT);
-    pic[d][stressorIndex].filter(Texture::LINEAR);
-    loaded[d][stressorIndex] = true;
+    totalData.insert(totalData.end(),
+                     std::make_move_iterator(dataImage.array().begin()),
+                     std::make_move_iterator(dataImage.array().end()));
   }
+
+  Texture &target = oceanData[stressorIndex];
+  target.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+  target.filter(Texture::LINEAR);
+  target.create3D(imageWidth, imageHeight, data::years_nasa);
+  target.submit(totalData.data(), GL_RGBA, GL_UNSIGNED_BYTE);
 }
 
-void OceanDataViewer::loadChiDataset(const std::string &prefix,
-                                     const std::string &postfix,
-                                     int stressorIndex) {
-  Image oceanData;
-  std::cout << "Start loading stressorIndex: " << stressorIndex << std::endl;
+void OceanDataViewer::loadDataCHI(const std::string &prefix,
+                                  const std::string &postfix,
+                                  int stressorIndex) {
+  std::cout << "Loading stressorIndex: " << stressorIndex << std::endl;
+
+  unsigned int imageWidth, imageHeight;
+  std::vector<uint8_t> totalData;
   for (int d = 0; d < data::years_chi; d++) {
     std::ostringstream ostr;
     ostr << dataPath << prefix << d + 2003 << postfix;
+    auto dataImage = Image(ostr.str());
+    if (d == 0) {
+      imageWidth = dataImage.width();
+      imageHeight = dataImage.height();
+      totalData.reserve(4 * imageWidth * imageHeight * data::years_chi);
+    } else if (imageWidth != dataImage.width() ||
+               imageHeight != dataImage.height()) {
+      std::cerr << "Image dimensions do not match" << std::endl;
+      return;
+    }
 
-    oceanData = Image(ostr.str());
-
-    pic[d][stressorIndex].create2D(oceanData.width(), oceanData.height());
-    pic[d][stressorIndex].submit(oceanData.array().data(), GL_RGBA,
-                                 GL_UNSIGNED_BYTE);
-    pic[d][stressorIndex].wrap(Texture::REPEAT);
-    pic[d][stressorIndex].filter(Texture::LINEAR);
-    loaded[d][stressorIndex] = true;
+    totalData.insert(totalData.end(),
+                     std::make_move_iterator(dataImage.array().begin()),
+                     std::make_move_iterator(dataImage.array().end()));
   }
+
+  Texture &target = oceanData[stressorIndex];
+  target.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+  target.filter(Texture::LINEAR);
+  target.create3D(imageWidth, imageHeight, data::years_chi);
+  target.submit(totalData.data(), GL_RGBA, GL_UNSIGNED_BYTE);
 }
 
-void OceanDataViewer::loadCO2Dataset(const std::string &video) {
-  std::string path = dataPath + video;
+void OceanDataViewer::loadDataCO2(const std::string &videoFile) {
+  std::string path = dataPath + videoFile;
 
   videoDecoder = std::make_unique<VideoDecoder>();
   videoDecoder->enableAudio(false);
@@ -319,34 +362,98 @@ void OceanDataViewer::loadCO2Dataset(const std::string &video) {
 void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
                                      PresetSequencer &seq, State &state,
                                      Nav &nav) {
-  gui << dataBlend;
-  gui << nasaYear << chiYear;
-  gui << cycleYears;
+  gui << cycleYears << nasaYear << chiYear;
+  gui << show_sst << show_carbon << show_chl << show_flh << show_fish
+      << show_ship << show_oa << show_slr << show_co2;
+  gui << dataBlend << show_clouds;
   gui << rotateGlobe << faceTo << animateCam;
-  gui << show_carbon << show_slr << show_chl << show_flh << show_oa << show_sst;
-  gui << show_fish << show_ship;
-  gui << show_clouds << show_co2;
 
-  presets << nasaYear << dataBlend;
-  presets << cycleYears << rotateGlobe;
-  presets << show_carbon << show_slr << show_chl << show_flh << show_oa
-          << show_sst;
-  presets << show_fish << show_ship;
-  presets << show_clouds << show_co2;
+  presets << cycleYears;
+  presets << dataIndex << show_co2;
+  presets << dataBlend << show_clouds;
+  presets << rotateGlobe << faceTo << animateCam;
 
-  seq << geoCoord << cycleYears << rotateGlobe << faceTo << dataBlend;
-  seq << show_carbon << show_slr << show_ship << show_chl << show_flh << show_oa
-      << show_sst;
-  seq << show_fish;
-  seq << show_clouds << show_co2;
+  seq << cycleYears;
+  seq << show_sst << show_carbon << show_chl << show_flh << show_fish
+      << show_ship << show_oa << show_slr << show_co2;
+  seq << dataBlend << show_clouds;
+  seq << geoCoord << rotateGlobe << faceTo;
 
   geoCoord.registerChangeCallback(
       [&](Vec3f v) { setNavTarget(v.x, v.y, v.z); });
 
   cycleYears.registerChangeCallback([&](float value) {
     if (value > 0) {
-      nasaYear.setNoCalls(2013);
+      nasaYear.setNoCalls(2012);
       chiYear.setNoCalls(2003);
     }
   });
+
+  show_sst.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(0);
+    }
+  });
+
+  show_carbon.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(1);
+    }
+  });
+
+  show_chl.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(2);
+    }
+  });
+
+  show_flh.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(3);
+    }
+  });
+
+  show_fish.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(4);
+    }
+  });
+
+  show_ship.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(5);
+    }
+  });
+
+  show_oa.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(6);
+    }
+  });
+
+  show_slr.registerChangeCallback([&](float value) {
+    resetIndex();
+    if (value > 0) {
+      dataIndex.setNoCalls(7);
+    }
+  });
+}
+
+void OceanDataViewer::resetIndex() {
+  dataIndex.setNoCalls(-1);
+  show_sst.setNoCalls(0.f);
+  show_carbon.setNoCalls(0.f);
+  show_chl.setNoCalls(0.f);
+  show_flh.setNoCalls(0.f);
+  show_fish.setNoCalls(0.f);
+  show_ship.setNoCalls(0.f);
+  show_oa.setNoCalls(0.f);
+  show_slr.setNoCalls(0.f);
 }

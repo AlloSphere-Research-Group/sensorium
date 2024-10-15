@@ -25,37 +25,25 @@ struct OceanDataViewer {
                       PresetSequencer &seq, State &state, Nav &nav);
 
   void loadAllData();
-  void loadDataset(const std::string &pathPrefix, int stressorIndex);
-  void loadChiDataset(const std::string &prefix, const std::string &postfix,
-                      int stressorIndex);
-  void loadCO2Dataset(const std::string &video);
+  void loadDataNASA(const std::string &pathPrefix, int stressorIndex);
+  void loadDataCHI(const std::string &prefix, const std::string &postfix,
+                   int stressorIndex);
+  void loadDataCO2(const std::string &videoFile);
+
+  void resetIndex();
 
   std::unique_ptr<VideoDecoder> videoDecoder;
   Texture texY, texU, texV;
 
   ShaderManager shaderManager;
-  Texture spaceTex, earthTex;
+  Texture spaceTex, earthTex, cloudTex;
   VAOMesh spaceMesh, earthMesh;
 
   std::string dataPath;
 
-  Parameter dataBlend{"dataBlend", "", 1.0, 0.0, 1.0};
-
-  ParameterVec3 geoCoord{"geoCoord", "Nav"};
-  ParameterBool rotateGlobe{"Rotate_Globe", "", 0.0};
-  ParameterBool faceTo{"Face_Center", "Nav", 1.0};
-  ParameterBool animateCam{"animateCam", "Nav", 0.0};
-  Pose navTarget;
-  float anim_speed = 0.0;
-  float anim_target_speed = 0.002;
-
   ParameterBool cycleYears{"CycleYears", "", 0.0};
-  Parameter nasaYear{"NASAYear", 2013, 2013, 2023};
-  Parameter chiYear{"CHIYear", 2003, 2003, 2013};
-
-  Texture cloud[data::num_clouds];
-  Texture pic[data::years_nasa][data::num_stressors];
-  bool loaded[data::years_nasa][data::num_stressors];
+  Parameter nasaYear{"NASAYear", "", 2012, 2012, 2023};
+  Parameter chiYear{"CHIYear", "", 2003, 2003, 2013};
 
   ParameterBool show_sst{"Sea_surface_temperature", "", 0.0};
   ParameterBool show_carbon{"Ocean_Carbon", "", 0.0};
@@ -65,6 +53,19 @@ struct OceanDataViewer {
   ParameterBool show_ship{"Shipping", "", 0.0};
   ParameterBool show_oa{"Ocean_acidification", "", 0.0};
   ParameterBool show_slr{"Sea_level_rise", "", 0.0};
-  ParameterBool show_clouds{"Clouds", "", 0.0};
+
+  ParameterInt dataIndex{"dataIndex", "", -1, -1, data::num_stressors - 1};
+  Texture oceanData[data::num_stressors];
+
   ParameterBool show_co2{"CO2", "", 0.0};
+  Parameter dataBlend{"dataBlend", "", 1.0, 0.0, 1.0};
+  ParameterBool show_clouds{"Clouds", "", 0.0};
+
+  ParameterVec3 geoCoord{"geoCoord", "Nav"};
+  ParameterBool rotateGlobe{"Rotate_Globe", "Nav", 0.0};
+  ParameterBool faceTo{"Face_Center", "Nav", 1.0};
+  ParameterBool animateCam{"animateCam", "Nav", 0.0};
+  Pose navTarget;
+  float anim_speed = 0.0;
+  float anim_target_speed = 0.002;
 };

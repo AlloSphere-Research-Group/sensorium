@@ -57,11 +57,11 @@ struct SensoriumApp : DistributedAppWithState<State> {
     nav().pos(0, 0, -15);
     nav().quat().fromAxisAngle(0.5 * M_2PI, 0, 1, 0);
 
-    // navControl().vscale(0.125 * 0.1 * 0.5);
-    // navControl().tscale(2 * 0.1 * 0.5);
+    navControl().vscale(0.125 * 0.1 * 0.5);
+    navControl().tscale(2 * 0.1 * 0.5);
 
     oceanDataViewer.create(lens());
-    // videoPlayer.create();
+    videoPlayer.create();
 
     // Initialize GUI and Parameter callbacks
     if (isPrimary()) {
@@ -72,25 +72,27 @@ struct SensoriumApp : DistributedAppWithState<State> {
       auto &gui = guiDomain->newGUI();
 
       oceanDataViewer.registerParams(gui, presets, sequencer, state(), nav());
-      // videoPlayer.registerParams(gui, presets, sequencer, state());
-      // audioPlayer.registerParams(gui, presets, sequencer);
+      videoPlayer.registerParams(gui, presets, sequencer, state());
+      audioPlayer.registerParams(gui, presets, sequencer);
 
       sequencer << presets;
+      sequencer.setVerbose(true);
       // *gui << sequencer << recorder;
     }
   }
 
   void onAnimate(double dt) {
-    oceanDataViewer.update(dt, nav(), state(), isPrimary());
-    // videoPlayer.update(dt, nav(), state(), isPrimary());
+    if (!videoPlayer.update(dt, nav(), state(), isPrimary())) {
+      oceanDataViewer.update(dt, nav(), state(), isPrimary());
+    }
   }
 
-  // void onSound(AudioIOData &io) { audioPlayer.onSound(io); }
+  void onSound(AudioIOData &io) { audioPlayer.onSound(io); }
 
   void onDraw(Graphics &g) {
-    // if (!videoPlayer.draw(g, isPrimary())) {
-    oceanDataViewer.draw(g, nav(), state(), lens());
-    // }
+    if (!videoPlayer.draw(g, isPrimary())) {
+      oceanDataViewer.draw(g, nav(), state(), lens());
+    }
   }
 
   bool onKeyDown(const Keyboard &k) {
@@ -108,7 +110,6 @@ struct SensoriumApp : DistributedAppWithState<State> {
       if (k.key() == ' ') {
         // Notice that you don't need to add the extension ".sequence" to the
         // name
-        sequencer.setVerbose(true);
         if (sequencer.running()) {
           sequencer.stopSequence("sensorium");
           videoPlayer.playingVideo = false;

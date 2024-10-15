@@ -46,7 +46,7 @@ void VideoPlayer::create() {
   });
 }
 
-void VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
+bool VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
   shaderManager.update();
 
   if (loadVideo) {
@@ -55,6 +55,7 @@ void VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
       if (isPrimary) {
         state.video_clock = 0.0;
         nav.home();
+        nav.nudgeF(-0.001);
       }
     }
   }
@@ -79,7 +80,11 @@ void VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
         videoDecoder->seek(0);
       }
     }
+
+    return true;
   }
+
+  return false;
 }
 
 bool VideoPlayer::draw(Graphics &g, bool isPrimary) {
@@ -151,17 +156,18 @@ bool VideoPlayer::loadVideoFile() {
 
 void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
                                  PresetSequencer &seq, State &state) {
-  gui << renderVideoInSim << playingVideo << videoBlend;
-  gui << playAerialImages << playSF;
-  gui << playBoardwalk << playCoral;
-  gui << playOverfishing << playAcidification << playBoat;
-  gui << videoPose << videoScale;
+  gui << playAerialImages << playSF << playBoardwalk << playCoral
+      << playOverfishing << playAcidification << playBoat;
+  gui << playingVideo << renderVideoInSim << videoBlend << videoPose
+      << videoScale;
 
-  presets << renderVideoInSim << playingVideo << videoBlend;
+  presets << playAerialImages << playSF << playBoardwalk << playCoral
+          << playOverfishing << playAcidification << playBoat;
+  presets << playingVideo << videoBlend << videoPose << videoScale;
 
-  seq << videoToLoad << videoBlend << playingVideo;
-  seq << playBoardwalk << playCoral << playOverfishing << playAerialImages
-      << playAcidification << playSF << playBoat;
+  seq << playAerialImages << playSF << playBoardwalk << playCoral
+      << playOverfishing << playAcidification << playBoat;
+  seq << playingVideo << videoBlend << videoPose << videoScale;
 
   playAerialImages.registerChangeCallback([&](float value) {
     videoToLoad.set("aerialimages_+_sf (1080p).mp4");
