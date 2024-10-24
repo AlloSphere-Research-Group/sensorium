@@ -3,88 +3,117 @@
 
 
 # start piece
-
++0.1:/CycleYears:1
++0.1:/Sea_level_rise:1
+# +0.1:/Sea_surface_temperature:1
 
 # fly over germany, animate sea level rise
-+0.1:/Nav/geoCoord:53.5,9.95,2.5
-+5.0:/Sea_level_rise:1
-+0.1:/Ocean_Carbon:1
-+0.1:/CycleYears:1
++1.0:/Nav/llr:53.5,9.95,2.5
+# +35.0:/Sea_surface_temperature:0
+# +0.1:/Sea_level_rise:1
+#+0.1:/Ocean_Carbon:1
 
 # water rising xxx
 #+0.1:/Play_Water:1.0
 
 # 1:17 - dt 
-+42.0:/dataBlend:0.0:2.0
-+2.0:/videoBlend:0.0:1.0
++35.0:/blend:0.0:2.0
++2.0:/blend1:0.0:1.0
 +1.0:/Play_AerialImages:1.0
-+0.5:/videoBlend:1.0:3.0
++0.5:/blend1:1.0:3.0
+
+
+# fly to cali
+# +1.0:/Nav/camPose:0,0,-15,0,0,1,0
+# +55.0:/Nav/llr:37.0,-123.0,2.5
+# +5.0:/blend1:0.0:3.0
+# +3.0:/playingVideo:0.0
+# +1.0:/blend:1.0:3.0
+
 
 # 2:36 - dt 1:19
-+70.0:/videoBlend:0.0:1.0
++70.0:/blend1:0.0:1.0
+# +12.0:/blend1:0.0:1.0
+# +1.0:/blend:0.0:1.0
 +1.0:/Play_Boardwalk:1.0
-+0.1:/videoBlend:1.0:1.0
++0.1:/blend1:1.0:1.0
 
 # 3:14 - dt 0:38
-+40.0:/videoBlend:0.0:1.0
++45.0:/blend1:0.0:1.0
 +1.0:/Play_Coral:1.0
-+0.1:/videoBlend:1.0:1.0
++0.1:/blend1:1.0:1.0
 
 # 4:10 - dt 0:56
-+55.0:/videoBlend:0.0:1.0
++55.0:/blend1:0.0:1.0
 +1.0:/Play_Overfishing:1.0
-+0.1:/videoBlend:1.0:1.0
++0.1:/blend1:1.0:1.0
 
 # 6:15 - dt 2:05
-+100.0:/videoBlend:0.0:1.0
++96.0:/blend1:0.0:1.0
 +1.0:/Play_Boat:1.0
-+4.0:/videoBlend:1.0:5.0
++6.0:/blend1:1.0:5.0
 
 
 # wait for back to globe
 
-+48.0:/Sea_level_rise:0
-#+0.1:/Nav/Face_Center:1
-+0.1:/Nav/geoCoord:0,138,0.01
-+0.1:/videoBlend:0.0:3.0
++40.0:/Sea_level_rise:0
++0.1:/Nav/animateCam:0
++0.1:/Nav/Face_Center:0
++1.0:/Nav/camPose:0,0,0.01,-0.412822, 0.000000, 0.910812, 0.000000
+# +0.1:/Nav/llr:0,138,0.01
++0.1:/blend1:0.0:3.0
 +3.0:/playingVideo:0.0
-+1.0:/dataBlend:1.0:3.0
++1.0:/blend:1.0:3.0
 
 
 # wait 5 show shipping
 +5.0:/Shipping:1
-+0.1:/CycleYears:1
 
-# wait 5 show sst
-+5.0:/Shipping:0
+# wait 10 show sst
++10.0:/Shipping:0
 +0.1:/Sea_surface_temperature:1
 
-# wait 5 show sst
-+5.0:/Sea_surface_temperature:0
+# wait 10 show over fishing
++10.0:/Sea_surface_temperature:0
 +0.1:/Over-fishing:1
 
-# wait 5 fly back out
-+5.0:/Nav/geoCoord:33,-118,10
-+0.1:/Nav/Rotate_Globe:1
-+0.1:/Nav/Face_Center:1
+# wait 10 show c02
++10.0:/Over-fishing:0
++0.1:/CO2-Video:1
 
-+20.0:/Nav/geoCoord:0,-80,30
+# wait 10 show c02
++10.0:/CO2-Video:0
++0.1:/Ocean_Carbon:1
+
+# wait 5 fly back out
+# +5.0:/Nav/llr:33,-118,10
+# +0.1:/Explore_Globe:1
+# +0.1:/Nav/Face_Center:1
+
++20.0:/Nav/llr:0,-80,10
+
++20.0:/Sub_Volume:0.1:2.0
++2.1:/blend:0.0:5.0
++5.5:/Audio_Volume:0.0:5.0
++5.5:/Sub_Volume:0.0:5.0
+
++10:/Pause_Audio:1.0
 
 
 
 # globe locations
-#+0.1:/Nav/geoCoord:33,-118,5
-#+0.1:/Nav/geoCoord:53.5,9.95,3.5
-#+0.1:/Nav/geoCoord:54.4,12.59,3.5
-#+0.1:/Nav/geoCoord:53.9,9.53,3.5
-#+0.1:/Nav/geoCoord:53.78,9.41,3.5
-#+0.1:/Nav/geoCoord:0,-80,30
-#+0.1:/Nav/geoCoord:0,138,0.01
+#+0.1:/Nav/llr:33,-118,5
+#+0.1:/Nav/llr:53.5,9.95,3.5
+#+0.1:/Nav/llr:54.4,12.59,3.5
+#+0.1:/Nav/llr:53.9,9.53,3.5
+#+0.1:/Nav/llr:53.78,9.41,3.5
+#+0.1:/Nav/llr:0,-80,30
+#+0.1:/Nav/llr:0,138,0.01
 
 # video fade out and in example
 #+0.1:/Play_AerialImages:1.0
-#+2.0:/videoBlend:0.0:1.0
+#+2.0:/blend1:0.0:1.0
 #+1.0:/Play_Boardwalk:1.0
-#+0.1:/videoBlend:1.0:1.0
+#+0.1:/blend1:1.0:1.0
 
 ::
