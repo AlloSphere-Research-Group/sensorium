@@ -1,36 +1,42 @@
 #include "OceanDataViewer.hpp"
-#include "al/sphere/al_SphereUtils.hpp"
+
 #include <iterator>
+
+#include "al/sphere/al_SphereUtils.hpp"
 
 using namespace al;
 
-void OceanDataViewer::init(const SearchPaths &paths) {
+void OceanDataViewer::init(const SearchPaths& paths)
+{
   shaderManager.setSearchPaths(paths);
   shaderManager.setPollInterval(1);
 
   if (sphere::isSphereMachine()) {
     if (sphere::isRendererMachine()) {
       dataPath = "/data/Sensorium/";
-    } else {
+    }
+    else {
       dataPath = "/Volumes/Data/Sensorium/";
     }
-  } else {
+  }
+  else {
     dataPath = "data/";
   }
 }
 
-void OceanDataViewer::create(Lens &lens) {
+void OceanDataViewer::create(Lens& lens)
+{
   shaderManager.add("space", "mono.vert", "space.frag");
   shaderManager.add("data", "stereo.vert", "data.frag");
   shaderManager.add("co2", "stereo.vert", "co2.frag");
 
-  auto &spaceShader = shaderManager.get("space");
+  auto& spaceShader = shaderManager.get("space");
   spaceShader.begin();
   spaceShader.uniform("texSpace", 0);
   spaceShader.uniform("dataBlend", 1.f);
   spaceShader.end();
 
-  auto &dataShader = shaderManager.get("data");
+  auto& dataShader = shaderManager.get("data");
   dataShader.begin();
   dataShader.uniform("eye_sep", 0.f);
   dataShader.uniform("foc_len", lens.focalLength());
@@ -43,7 +49,7 @@ void OceanDataViewer::create(Lens &lens) {
   dataShader.uniform("showCloud", 1.f);
   dataShader.end();
 
-  auto &co2Shader = shaderManager.get("co2");
+  auto& co2Shader = shaderManager.get("co2");
   co2Shader.begin();
   co2Shader.uniform("eye_sep", 0.f);
   co2Shader.uniform("foc_len", lens.focalLength());
@@ -95,8 +101,8 @@ void OceanDataViewer::create(Lens &lens) {
   loadAllData();
 }
 
-void OceanDataViewer::update(double dt, Nav &nav, State &state,
-                             bool isPrimary) {
+void OceanDataViewer::update(double dt, Nav& nav, State& state, bool isPrimary)
+{
   shaderManager.update();
 
   if (isPrimary) {
@@ -144,12 +150,13 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
     if (show_co2.get()) {
       state.co2_clock += dt;
     }
-  } else {
+  }
+  else {
     nav.set(state.global_pose);
   }
 
   if (show_co2.get()) {
-    MediaFrame *frame;
+    MediaFrame* frame;
     if (videoDecoder != NULL) {
       frame = videoDecoder->getVideoFrame(state.co2_clock);
       if (frame) {
@@ -157,7 +164,8 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
         texU.submit(frame->dataU.data());
         texV.submit(frame->dataV.data());
         videoDecoder->gotVideoFrame();
-      } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+      }
+      else if (videoDecoder->finished() && videoDecoder->isLooping()) {
         if (isPrimary) {
           state.co2_clock = 0;
         }
@@ -167,20 +175,21 @@ void OceanDataViewer::update(double dt, Nav &nav, State &state,
   }
 }
 
-void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
+void OceanDataViewer::draw(Graphics& g, Nav& nav, State& state, Lens& lens)
+{
   g.clear();
 
   g.depthTesting(true);
 
   // space
-  auto &spaceShader = shaderManager.get("space");
+  auto& spaceShader = shaderManager.get("space");
   g.shader(spaceShader);
   spaceShader.uniform("dataBlend", dataBlend.get());
 
   g.pushMatrix();
   spaceTex.bind(0);
   g.translate(nav.pos());
-  g.rotate(nav.quat()); // keeps space still
+  g.rotate(nav.quat());  // keeps space still
   g.draw(spaceMesh);
   spaceTex.unbind(0);
   g.popMatrix();
@@ -195,7 +204,7 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
   }
 
   if (!show_co2.get()) {
-    auto &dataShader = shaderManager.get("data");
+    auto& dataShader = shaderManager.get("data");
     g.shader(dataShader);
     dataShader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
     dataShader.uniform("dataBlend", dataBlend.get());
@@ -208,13 +217,15 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
       oceanData[dataIndex.get()].bind(2);
       g.draw(earthMesh);
       oceanData[dataIndex.get()].unbind(2);
-    } else {
+    }
+    else {
       dataShader.uniform("validData", 0.f);
       g.draw(earthMesh);
     }
     cloudTex.unbind(1);
-  } else {
-    auto &co2Shader = shaderManager.get("co2");
+  }
+  else {
+    auto& co2Shader = shaderManager.get("co2");
     g.shader(co2Shader);
     co2Shader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
     co2Shader.uniform("dataBlend", dataBlend.get());
@@ -231,13 +242,15 @@ void OceanDataViewer::draw(Graphics &g, Nav &nav, State &state, Lens &lens) {
   g.popMatrix();
 }
 
-float OceanDataViewer::easeIn(float _value, float _target, float _speed) {
+float OceanDataViewer::easeIn(float _value, float _target, float _speed)
+{
   float d = _target - _value;
   float x = d * _speed;
   return x;
 }
 
-void OceanDataViewer::setNavTarget(float lat, float lon, float alt) {
+void OceanDataViewer::setNavTarget(float lat, float lon, float alt)
+{
   navTarget.pos(
       Vec3d(-alt * cos(lat / 180.0 * M_PI) * sin(lon / 180.0 * M_PI),
             alt * sin(lat / 180.0 * M_PI),
@@ -247,17 +260,18 @@ void OceanDataViewer::setNavTarget(float lat, float lon, float alt) {
   anim_speed = anim_speed / 5;
 }
 
-void OceanDataViewer::loadAllData() {
-  loadDataNASA("nasa/sst/", 0);    // SST
-  loadDataNASA("nasa/carbon/", 1); // Carbon
-  loadDataNASA("nasa/chl/", 2);    // Chlorophyll
-  loadDataNASA("nasa/flh/", 3);    // Fluroscene Line Height
+void OceanDataViewer::loadAllData()
+{
+  loadDataNASA("nasa/sst/", 0);     // SST
+  loadDataNASA("nasa/carbon/", 1);  // Carbon
+  loadDataNASA("nasa/chl/", 2);     // Chlorophyll
+  loadDataNASA("nasa/flh/", 3);     // Fluroscene Line Height
 
   loadDataCHI("chi/fish/fph_100_", "_impact.png",
-              4);                                  // Over-Fishing
-  loadDataCHI("ship/shipping_", "_impact.png", 5); // Shipping
-  loadDataCHI("oa/oa_", "_impact.png", 6);         // Ocean Acidification
-  loadDataCHI("slr/slr_", "_impact.png", 7);       // Sea level rise
+              4);                                   // Over-Fishing
+  loadDataCHI("ship/shipping_", "_impact.png", 5);  // Shipping
+  loadDataCHI("oa/oa_", "_impact.png", 6);          // Ocean Acidification
+  loadDataCHI("slr/slr_", "_impact.png", 7);        // Sea level rise
 
   // Co2 Video data
   loadDataCO2(
@@ -267,8 +281,9 @@ void OceanDataViewer::loadAllData() {
   std::cout << "Loaded Ocean data." << std::endl;
 }
 
-void OceanDataViewer::loadDataNASA(const std::string &pathPrefix,
-                                   int stressorIndex) {
+void OceanDataViewer::loadDataNASA(const std::string& pathPrefix,
+                                   int stressorIndex)
+{
   std::cout << "Loading stressorIndex: " << stressorIndex << std::endl;
 
   unsigned int imageWidth, imageHeight;
@@ -281,8 +296,9 @@ void OceanDataViewer::loadDataNASA(const std::string &pathPrefix,
       imageWidth = dataImage.width();
       imageHeight = dataImage.height();
       totalData.reserve(4 * imageWidth * imageHeight * data::years_nasa);
-    } else if (imageWidth != dataImage.width() ||
-               imageHeight != dataImage.height()) {
+    }
+    else if (imageWidth != dataImage.width() ||
+             imageHeight != dataImage.height()) {
       std::cerr << "Image dimensions do not match" << std::endl;
       return;
     }
@@ -292,16 +308,16 @@ void OceanDataViewer::loadDataNASA(const std::string &pathPrefix,
                      std::make_move_iterator(dataImage.array().end()));
   }
 
-  Texture &target = oceanData[stressorIndex];
+  Texture& target = oceanData[stressorIndex];
   target.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
   target.filter(Texture::LINEAR);
   target.create3D(imageWidth, imageHeight, data::years_nasa);
   target.submit(totalData.data(), GL_RGBA, GL_UNSIGNED_BYTE);
 }
 
-void OceanDataViewer::loadDataCHI(const std::string &prefix,
-                                  const std::string &postfix,
-                                  int stressorIndex) {
+void OceanDataViewer::loadDataCHI(const std::string& prefix,
+                                  const std::string& postfix, int stressorIndex)
+{
   std::cout << "Loading stressorIndex: " << stressorIndex << std::endl;
 
   unsigned int imageWidth, imageHeight;
@@ -314,8 +330,9 @@ void OceanDataViewer::loadDataCHI(const std::string &prefix,
       imageWidth = dataImage.width();
       imageHeight = dataImage.height();
       totalData.reserve(4 * imageWidth * imageHeight * data::years_chi);
-    } else if (imageWidth != dataImage.width() ||
-               imageHeight != dataImage.height()) {
+    }
+    else if (imageWidth != dataImage.width() ||
+             imageHeight != dataImage.height()) {
       std::cerr << "Image dimensions do not match" << std::endl;
       return;
     }
@@ -325,14 +342,15 @@ void OceanDataViewer::loadDataCHI(const std::string &prefix,
                      std::make_move_iterator(dataImage.array().end()));
   }
 
-  Texture &target = oceanData[stressorIndex];
+  Texture& target = oceanData[stressorIndex];
   target.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
   target.filter(Texture::LINEAR);
   target.create3D(imageWidth, imageHeight, data::years_chi);
   target.submit(totalData.data(), GL_RGBA, GL_UNSIGNED_BYTE);
 }
 
-void OceanDataViewer::loadDataCO2(const std::string &videoFile) {
+void OceanDataViewer::loadDataCO2(const std::string& videoFile)
+{
   std::string path = dataPath + videoFile;
 
   videoDecoder = std::make_unique<VideoDecoder>();
@@ -359,9 +377,10 @@ void OceanDataViewer::loadDataCO2(const std::string &videoFile) {
   texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 }
 
-void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
-                                     PresetSequencer &seq, State &state,
-                                     Nav &nav) {
+void OceanDataViewer::registerParams(ControlGUI& gui, PresetHandler& presets,
+                                     PresetSequencer& seq, State& state,
+                                     Nav& nav)
+{
   gui << cycleYears << nasaYear << chiYear;
   gui << show_sst << show_carbon << show_chl << show_flh << show_fish
       << show_ship << show_oa << show_slr << show_co2;
@@ -392,62 +411,63 @@ void OceanDataViewer::registerParams(ControlGUI &gui, PresetHandler &presets,
   show_sst.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(0);
+      dataIndex.set(0);
     }
   });
 
   show_carbon.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(1);
+      dataIndex.set(1);
     }
   });
 
   show_chl.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(2);
+      dataIndex.set(2);
     }
   });
 
   show_flh.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(3);
+      dataIndex.set(3);
     }
   });
 
   show_fish.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(4);
+      dataIndex.set(4);
     }
   });
 
   show_ship.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(5);
+      dataIndex.set(5);
     }
   });
 
   show_oa.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(6);
+      dataIndex.set(6);
     }
   });
 
   show_slr.registerChangeCallback([&](float value) {
     resetIndex();
     if (value > 0) {
-      dataIndex.setNoCalls(7);
+      dataIndex.set(7);
     }
   });
 }
 
-void OceanDataViewer::resetIndex() {
-  dataIndex.setNoCalls(-1);
+void OceanDataViewer::resetIndex()
+{
+  dataIndex.set(-1);
   show_sst.setNoCalls(0.f);
   show_carbon.setNoCalls(0.f);
   show_chl.setNoCalls(0.f);
