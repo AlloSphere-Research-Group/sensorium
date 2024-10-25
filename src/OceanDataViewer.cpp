@@ -106,6 +106,11 @@ void OceanDataViewer::update(double dt, Nav& nav, State& state, bool isPrimary)
   shaderManager.update();
 
   if (isPrimary) {
+    if (updateNav) {
+      nav.set(manualNav.get());
+      updateNav = false;
+    }
+
     if (rotateGlobe.get()) {
       nav.nudgeR(0.03 * nav.pos().mag() * dt);
     }
@@ -262,6 +267,14 @@ void OceanDataViewer::setNavTarget(float lat, float lon, float alt)
 
 void OceanDataViewer::loadAllData()
 {
+  int value;
+  glGetIntegerv(GL_MAX_TEXTURE_SIZE, &value);
+  std::cout << "Max Texture Size: " << value << std::endl;
+  glGetIntegerv(GL_MAX_3D_TEXTURE_SIZE, &value);
+  std::cout << "Max 3D Texture Size: " << value << std::endl;
+  glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &value);
+  std::cout << "Max CubeMap Texture Size: " << value << std::endl;
+
   loadDataNASA("nasa/sst/", 0);     // SST
   loadDataNASA("nasa/carbon/", 1);  // Carbon
   loadDataNASA("nasa/chl/", 2);     // Chlorophyll
@@ -292,6 +305,9 @@ void OceanDataViewer::loadDataNASA(const std::string& pathPrefix,
     std::ostringstream ostr;
     ostr << dataPath << pathPrefix << d + 2012 << ".png";
     auto dataImage = Image(ostr.str());
+    if (!dataImage.loaded()) {
+      std::cerr << " Failed to load image: " << ostr.str() << std::endl;
+    }
     if (d == 0) {
       imageWidth = dataImage.width();
       imageHeight = dataImage.height();
@@ -326,6 +342,9 @@ void OceanDataViewer::loadDataCHI(const std::string& prefix,
     std::ostringstream ostr;
     ostr << dataPath << prefix << d + 2003 << postfix;
     auto dataImage = Image(ostr.str());
+    if (!dataImage.loaded()) {
+      std::cerr << " Failed to load image: " << ostr.str() << std::endl;
+    }
     if (d == 0) {
       imageWidth = dataImage.width();
       imageHeight = dataImage.height();
@@ -385,21 +404,29 @@ void OceanDataViewer::registerParams(ControlGUI& gui, PresetHandler& presets,
   gui << show_sst << show_carbon << show_chl << show_flh << show_fish
       << show_ship << show_oa << show_slr << show_co2;
   gui << dataBlend << show_clouds;
-  gui << rotateGlobe << faceTo << animateCam;
+  gui << rotateGlobe << faceTo << animateCam << geoCoord << manualNav;
 
   presets << cycleYears;
   presets << dataIndex << show_co2;
   presets << dataBlend << show_clouds;
-  presets << rotateGlobe << faceTo << animateCam;
+  presets << rotateGlobe << faceTo << animateCam << geoCoord << manualNav;
 
   seq << cycleYears;
   seq << show_sst << show_carbon << show_chl << show_flh << show_fish
       << show_ship << show_oa << show_slr << show_co2;
   seq << dataBlend << show_clouds;
-  seq << geoCoord << rotateGlobe << faceTo;
+  seq << rotateGlobe << faceTo << animateCam << geoCoord << manualNav;
 
   geoCoord.registerChangeCallback(
       [&](Vec3f v) { setNavTarget(v.x, v.y, v.z); });
+
+  manualNav.registerChangeCallback([&](Pose pose) { updateNav = true; });
+
+  animateCam.registerChangeCallback([&](float value) {
+    if (value < 0.5) {
+      anim_speed = 0;
+    }
+  });
 
   cycleYears.registerChangeCallback([&](float value) {
     if (value > 0) {

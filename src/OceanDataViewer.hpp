@@ -1,5 +1,8 @@
 #pragma once
 
+#include <iostream>
+#include <memory>
+
 #include "AppState.hpp"
 #include "ShaderManager.hpp"
 #include "al/graphics/al_Image.hpp"
@@ -7,28 +10,26 @@
 #include "al/graphics/al_Texture.hpp"
 #include "al/ui/al_ControlGUI.hpp"
 #include "al_ext/video/al_VideoDecoder.hpp"
-#include <iostream>
-#include <memory>
 
 using namespace al;
 
 struct OceanDataViewer {
-  void init(const SearchPaths &paths);
-  void create(Lens &lens);
-  void update(double dt, Nav &nav, State &state, bool isPrimary);
-  void draw(Graphics &g, Nav &nav, State &state, Lens &lens);
+  void init(const SearchPaths& paths);
+  void create(Lens& lens);
+  void update(double dt, Nav& nav, State& state, bool isPrimary);
+  void draw(Graphics& g, Nav& nav, State& state, Lens& lens);
 
   float easeIn(float _value, float _target, float _speed);
   void setNavTarget(float lat, float lon, float alt = 3.2);
 
-  void registerParams(ControlGUI &gui, PresetHandler &presets,
-                      PresetSequencer &seq, State &state, Nav &nav);
+  void registerParams(ControlGUI& gui, PresetHandler& presets,
+                      PresetSequencer& seq, State& state, Nav& nav);
 
   void loadAllData();
-  void loadDataNASA(const std::string &pathPrefix, int stressorIndex);
-  void loadDataCHI(const std::string &prefix, const std::string &postfix,
+  void loadDataNASA(const std::string& pathPrefix, int stressorIndex);
+  void loadDataCHI(const std::string& prefix, const std::string& postfix,
                    int stressorIndex);
-  void loadDataCO2(const std::string &videoFile);
+  void loadDataCO2(const std::string& videoFile);
 
   void resetIndex();
 
@@ -61,6 +62,7 @@ struct OceanDataViewer {
   Parameter dataBlend{"dataBlend", "", 1.0, 0.0, 1.0};
   ParameterBool show_clouds{"Clouds", "", 0.0};
 
+  ParameterPose manualNav{"manualNav", "Nav"};
   ParameterVec3 geoCoord{"geoCoord", "Nav"};
   ParameterBool rotateGlobe{"Rotate_Globe", "Nav", 0.0};
   ParameterBool faceTo{"Face_Center", "Nav", 1.0};
@@ -68,4 +70,5 @@ struct OceanDataViewer {
   Pose navTarget;
   float anim_speed = 0.0;
   float anim_target_speed = 0.002;
+  bool updateNav{false};
 };

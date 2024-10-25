@@ -1,27 +1,32 @@
 #include "VideoPlayer.hpp"
+
 #include "al/sphere/al_SphereUtils.hpp"
 
 using namespace al;
 
-void VideoPlayer::init(const SearchPaths &paths) {
+void VideoPlayer::init(const SearchPaths& paths)
+{
   shaderManager.setSearchPaths(paths);
   shaderManager.setPollInterval(1);
 
   if (sphere::isSphereMachine()) {
     if (sphere::isRendererMachine()) {
       dataPath = "/data/Sensorium/video/";
-    } else {
+    }
+    else {
       dataPath = "/Volumes/Data/Sensorium/video/";
     }
-  } else {
+  }
+  else {
     dataPath = "data/video/";
   }
 }
 
-void VideoPlayer::create() {
+void VideoPlayer::create()
+{
   // compile & initialize shader
   shaderManager.add("video", "mono.vert", "video.frag");
-  auto &videoShader = shaderManager.get("video");
+  auto& videoShader = shaderManager.get("video");
   videoShader.begin();
   videoShader.uniform("texY", 0);
   videoShader.uniform("texU", 1);
@@ -46,7 +51,8 @@ void VideoPlayer::create() {
   });
 }
 
-bool VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
+void VideoPlayer::update(al_sec dt, State& state, bool isPrimary)
+{
   shaderManager.update();
 
   if (loadVideo) {
@@ -54,8 +60,6 @@ bool VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
       loadVideo = false;
       if (isPrimary) {
         state.video_clock = 0.0;
-        nav.home();
-        nav.nudgeF(-0.001);
       }
     }
   }
@@ -65,7 +69,7 @@ bool VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
       state.video_clock += dt;
     }
 
-    MediaFrame *frame;
+    MediaFrame* frame;
     if (videoDecoder != nullptr) {
       frame = videoDecoder->getVideoFrame(state.video_clock);
       if (frame) {
@@ -73,32 +77,26 @@ bool VideoPlayer::update(al_sec dt, Nav &nav, State &state, bool isPrimary) {
         texU.submit(frame->dataU.data());
         texV.submit(frame->dataV.data());
         videoDecoder->gotVideoFrame();
-      } else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+      }
+      else if (videoDecoder->finished() && videoDecoder->isLooping()) {
         if (isPrimary) {
           state.video_clock = 0.0;
         }
         videoDecoder->seek(0);
       }
     }
-
-    return true;
   }
-
-  return false;
 }
 
-bool VideoPlayer::draw(Graphics &g, bool isPrimary) {
-  if (!playingVideo.get()) {
-    return false;
-  }
-
+void VideoPlayer::draw(Graphics& g, bool isPrimary)
+{
   g.clear();
 
   if (isPrimary && !renderVideoInSim.get()) {
-    return true;
+    return;
   }
 
-  auto &videoShader = shaderManager.get("video");
+  auto& videoShader = shaderManager.get("video");
 
   g.shader(videoShader);
   videoShader.uniform("videoBlend", videoBlend.get());
@@ -117,11 +115,10 @@ bool VideoPlayer::draw(Graphics &g, bool isPrimary) {
   texY.unbind(0);
   texU.unbind(1);
   texV.unbind(2);
-
-  return true;
 }
 
-bool VideoPlayer::loadVideoFile() {
+bool VideoPlayer::loadVideoFile()
+{
   std::string path = dataPath + videoToLoad.get();
 
   if (videoDecoder != nullptr) {
@@ -154,8 +151,9 @@ bool VideoPlayer::loadVideoFile() {
   return true;
 }
 
-void VideoPlayer::registerParams(ControlGUI &gui, PresetHandler &presets,
-                                 PresetSequencer &seq, State &state) {
+void VideoPlayer::registerParams(ControlGUI& gui, PresetHandler& presets,
+                                 PresetSequencer& seq, State& state)
+{
   gui << playAerialImages << playSF << playBoardwalk << playCoral
       << playOverfishing << playAcidification << playBoat;
   gui << playingVideo << renderVideoInSim << videoBlend << videoPose

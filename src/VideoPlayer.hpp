@@ -1,5 +1,8 @@
 #pragma once
 
+#include <memory>
+#include <string>
+
 #include "AppState.hpp"
 #include "ShaderManager.hpp"
 #include "al/graphics/al_Shapes.hpp"
@@ -7,19 +10,17 @@
 #include "al/graphics/al_VAOMesh.hpp"
 #include "al/ui/al_ControlGUI.hpp"
 #include "al_ext/video/al_VideoDecoder.hpp"
-#include <memory>
-#include <string>
 
 using namespace al;
 
 struct VideoPlayer {
-  void init(const SearchPaths &paths);
+  void init(const SearchPaths& paths);
   void create();
-  bool update(al_sec dt, Nav &nav, State &state, bool isPrimary);
-  bool draw(Graphics &g, bool isPrimary);
+  void update(al_sec dt, State& state, bool isPrimary);
+  void draw(Graphics& g, bool isPrimary);
   bool loadVideoFile();
-  void registerParams(ControlGUI &gui, PresetHandler &presets,
-                      PresetSequencer &seq, State &state);
+  void registerParams(ControlGUI& gui, PresetHandler& presets,
+                      PresetSequencer& seq, State& state);
 
   std::unique_ptr<VideoDecoder> videoDecoder;
   ShaderManager shaderManager;

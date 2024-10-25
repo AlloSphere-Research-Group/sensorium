@@ -25,7 +25,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
 
   SearchPaths searchPaths;
 
-  void onInit() {
+  void onInit()
+  {
     cuttleboneDomain = CuttleboneDomain<State>::enableCuttlebone(this);
     if (!cuttleboneDomain) {
       std::cerr << "ERROR: Could not start Cuttlebone" << std::endl;
@@ -50,11 +51,12 @@ struct SensoriumApp : DistributedAppWithState<State> {
                       << videoPlayer.videoPose << videoPlayer.videoScale
                       << videoPlayer.videoBlend;
     parameterServer() << oceanDataViewer.dataIndex << oceanDataViewer.dataBlend
-                      << oceanDataViewer.show_co2
-                      << oceanDataViewer.show_clouds;
+                      << oceanDataViewer.show_co2 << oceanDataViewer.show_clouds
+                      << oceanDataViewer.manualNav;
   }
 
-  void onCreate() {
+  void onCreate()
+  {
     // lens().near(0.01).fovy(45).eyeSep(0);
     lens().fovy(45).eyeSep(0);
     nav().pos(0, 0, -15);
@@ -72,7 +74,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
       recorder.setDirectory("data/presets");
 
       auto guiDomain = GUIDomain::enableGUI(defaultWindowDomain());
-      auto &gui = guiDomain->newGUI();
+      auto& gui = guiDomain->newGUI();
 
       videoPlayer.registerParams(gui, presets, sequencer, state());
       oceanDataViewer.registerParams(gui, presets, sequencer, state(), nav());
@@ -84,29 +86,35 @@ struct SensoriumApp : DistributedAppWithState<State> {
     }
   }
 
-  void onAnimate(double dt) {
-    if (!videoPlayer.update(dt, nav(), state(), isPrimary())) {
-      oceanDataViewer.update(dt, nav(), state(), isPrimary());
-    }
+  void onAnimate(double dt)
+  {
+    oceanDataViewer.update(dt, nav(), state(), isPrimary());
+    videoPlayer.update(dt, state(), isPrimary());
   }
 
-  void onSound(AudioIOData &io) { audioPlayer.onSound(io); }
+  void onSound(AudioIOData& io) { audioPlayer.onSound(io); }
 
-  void onDraw(Graphics &g) {
-    if (!videoPlayer.draw(g, isPrimary())) {
+  void onDraw(Graphics& g)
+  {
+    if (videoPlayer.playingVideo.get()) {
+      videoPlayer.draw(g, isPrimary());
+    }
+    else {
       oceanDataViewer.draw(g, nav(), state(), lens());
     }
   }
 
-  bool onKeyDown(const Keyboard &k) {
+  bool onKeyDown(const Keyboard& k)
+  {
     std::string presetName = std::to_string(k.keyAsNumber());
     if (k.alt()) {
-      if (k.isNumber()) { // Use alt + any number key to store preset
+      if (k.isNumber()) {  // Use alt + any number key to store preset
         presets.storePreset(k.keyAsNumber(), presetName);
         std::cout << "Storing preset:" << presetName << std::endl;
       }
-    } else {
-      if (k.isNumber()) { // Recall preset using the number keys
+    }
+    else {
+      if (k.isNumber()) {  // Recall preset using the number keys
         presets.recallPreset(k.keyAsNumber());
         std::cout << "Recalling preset:" << presetName << std::endl;
       }
@@ -116,7 +124,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
         if (sequencer.running()) {
           sequencer.stopSequence("sensorium");
           videoPlayer.playingVideo = false;
-        } else {
+        }
+        else {
           sequencer.playSequence("sensorium");
         }
       }
@@ -128,7 +137,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
   }
 };
 
-int main() {
+int main()
+{
   SensoriumApp app;
   app.dimensions(1200, 800);
   app.configureAudio(44100, 512, 60, 0);

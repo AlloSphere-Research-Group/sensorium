@@ -6,11 +6,11 @@
 /CycleYears i 0
 /CHIYear f 2003.000000
 /NASAYear f 2012.000000
-/Sea_surface_temperature i 0
+/dataIndex i -1
 /CO2 i 0
 /dataBlend f 1.000000
 /Clouds i 0
-/Nav/geoCoord fffffff 0 0 -15 0 0 1 0
+/Nav/manualNav fffffff 0 0 -15 0 0 1 0
 /Nav/Rotate_Globe i 0
 /Nav/Face_Center i 1
 /Nav/animateCam i 0

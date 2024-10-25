@@ -1,40 +1,25 @@
 # preset 1 initialize start
 1:0.0:0.0
 
-
 # start piece
 +0.1:/CycleYears:1
 +0.1:/Sea_level_rise:1
-# +0.1:/Sea_surface_temperature:1
 
 # fly over germany, animate sea level rise
 +1.0:/Nav/geoCoord:53.5,9.95,2.5
-# +35.0:/Sea_surface_temperature:0
-# +0.1:/Sea_level_rise:1
-#+0.1:/Ocean_Carbon:1
-
-# water rising xxx
-#+0.1:/Play_Water:1.0
++35.0:/dataBlend:0.0:2.0
 
 # 1:17 - dt 
-+35.0:/dataBlend:0.0:2.0
 +2.0:/videoBlend:0.0:1.0
++0.1:/Nav/animateCam:0
++0.1:/Nav/Face_Center:0
++0.1:/Nav/manualNav:0,0,0.01,1,0,0,0
+# +0.1:/Nav/geoCoord:0,138,0.01
 +1.0:/Play_AerialImages:1.0
 +0.5:/videoBlend:1.0:3.0
 
-
-# fly to cali
-# +1.0:/Nav/camPose:0,0,-15,0,0,1,0
-# +55.0:/Nav/geoCoord:37.0,-123.0,2.5
-# +5.0:/videoBlend:0.0:3.0
-# +3.0:/playingVideo:0.0
-# +1.0:/dataBlend:1.0:3.0
-
-
 # 2:36 - dt 1:19
 +70.0:/videoBlend:0.0:1.0
-# +12.0:/videoBlend:0.0:1.0
-# +1.0:/dataBlend:0.0:1.0
 +1.0:/Play_Boardwalk:1.0
 +0.1:/videoBlend:1.0:1.0
 
@@ -53,18 +38,11 @@
 +1.0:/Play_Boat:1.0
 +6.0:/videoBlend:1.0:5.0
 
-
 # wait for back to globe
-
 +40.0:/Sea_level_rise:0
-+0.1:/Nav/animateCam:0
-+0.1:/Nav/Face_Center:0
-# +1.0:/Nav/camPose:0,0,0.01,-0.412822, 0.000000, 0.910812, 0.000000
-+0.1:/Nav/geoCoord:0,138,0.01
 +0.1:/videoBlend:0.0:3.0
 +3.0:/playingVideo:0.0
 +1.0:/dataBlend:1.0:3.0
-
 
 # wait 5 show shipping
 +5.0:/Shipping:1
@@ -98,7 +76,6 @@
 +5.5:/Sub_Volume:0.0:5.0
 
 +10:/Pause_Audio:1.0
-
 
 
 # globe locations
