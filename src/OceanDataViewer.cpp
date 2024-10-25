@@ -275,10 +275,10 @@ void OceanDataViewer::loadAllData()
   glGetIntegerv(GL_MAX_CUBE_MAP_TEXTURE_SIZE, &value);
   std::cout << "Max CubeMap Texture Size: " << value << std::endl;
 
-  loadDataNASA("nasa/sst/", 0);     // SST
-  loadDataNASA("nasa/carbon/", 1);  // Carbon
-  loadDataNASA("nasa/chl/", 2);     // Chlorophyll
-  loadDataNASA("nasa/flh/", 3);     // Fluroscene Line Height
+  loadDataNASA("nasa_rescaled/sst/", 0);     // SST
+  loadDataNASA("nasa_rescaled/carbon/", 1);  // Carbon
+  loadDataNASA("nasa_rescaled/chl/", 2);     // Chlorophyll
+  loadDataNASA("nasa_rescaled/flh/", 3);     // Fluroscene Line Height
 
   loadDataCHI("chi/fish/fph_100_", "_impact.png",
               4);                                   // Over-Fishing
