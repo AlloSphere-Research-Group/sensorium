@@ -97,7 +97,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
   void onDraw(Graphics& g)
   {
     if (videoPlayer.playingVideo.get()) {
-      videoPlayer.draw(g, isPrimary());
+      videoPlayer.draw(g, nav(), isPrimary());
     }
     else {
       oceanDataViewer.draw(g, nav(), state(), lens());

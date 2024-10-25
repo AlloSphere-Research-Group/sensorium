@@ -88,7 +88,7 @@ void VideoPlayer::update(al_sec dt, State& state, bool isPrimary)
   }
 }
 
-void VideoPlayer::draw(Graphics& g, bool isPrimary)
+void VideoPlayer::draw(Graphics& g, Nav& nav, bool isPrimary)
 {
   g.clear();
 
@@ -107,7 +107,9 @@ void VideoPlayer::draw(Graphics& g, bool isPrimary)
 
   g.pushMatrix();
   g.translate(videoPose.get().pos());
+  g.translate(nav.pos());
   g.rotate(videoPose.get().quat());
+  g.rotate(nav.quat());  // keeps space still
   g.scale(videoScale.get());
   g.draw(sphereMesh);
   g.popMatrix();
