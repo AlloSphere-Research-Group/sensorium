@@ -51,8 +51,8 @@ struct SensoriumApp : DistributedAppWithState<State> {
                       << videoPlayer.videoPose << videoPlayer.videoScale
                       << videoPlayer.videoBlend;
     parameterServer() << oceanDataViewer.dataIndex << oceanDataViewer.dataBlend
-                      << oceanDataViewer.show_co2 << oceanDataViewer.show_clouds
-                      << oceanDataViewer.manualNav;
+                      << oceanDataViewer.show_co2
+                      << oceanDataViewer.show_clouds;
   }
 
   void onCreate()

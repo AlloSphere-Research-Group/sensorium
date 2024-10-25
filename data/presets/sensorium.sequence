@@ -42,6 +42,7 @@
 +40.0:/Sea_level_rise:0
 +0.1:/videoBlend:0.0:3.0
 +3.0:/playingVideo:0.0
++0.1:/Nav/manualNav:0,0,0.01,1,0,0,0
 +1.0:/dataBlend:1.0:3.0
 
 # wait 5 show shipping
