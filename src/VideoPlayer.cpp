@@ -42,7 +42,7 @@ void VideoPlayer::create()
   texV.filter(Texture::LINEAR);
   texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
 
-  addTexSphere(sphereMesh, 10, 50);
+  addTexSphere(sphereMesh, 10, 50, true);
   sphereMesh.update();
 
   videoToLoad.registerChangeCallback([&](std::string value) {
