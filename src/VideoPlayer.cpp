@@ -4,7 +4,7 @@
 
 using namespace al;
 
-void VideoPlayer::init(const SearchPaths& paths)
+void VideoPlayerW::init(const SearchPaths& paths)
 {
   shaderManager.setSearchPaths(paths);
   shaderManager.setPollInterval(1);
@@ -22,25 +22,25 @@ void VideoPlayer::init(const SearchPaths& paths)
   }
 }
 
-void VideoPlayer::create()
+void VideoPlayerW::create()
 {
   // compile & initialize shader
-  shaderManager.add("video", "mono.vert", "video.frag");
-  auto& videoShader = shaderManager.get("video");
-  videoShader.begin();
-  videoShader.uniform("texY", 0);
-  videoShader.uniform("texU", 1);
-  videoShader.uniform("texV", 2);
-  videoShader.uniform("videoBlend", 1.f);
-  videoShader.end();
+  // shaderManager.add("video", "mono.vert", "video.frag");
+  // auto& videoShader = shaderManager.get("video");
+  // videoShader.begin();
+  // videoShader.uniform("texY", 0);
+  // videoShader.uniform("texU", 1);
+  // videoShader.uniform("texV", 2);
+  // videoShader.uniform("videoBlend", 1.f);
+  // videoShader.end();
 
   // generate texture
-  texY.filter(Texture::LINEAR);
-  texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-  texU.filter(Texture::LINEAR);
-  texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
-  texV.filter(Texture::LINEAR);
-  texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+  // texY.filter(Texture::LINEAR);
+  // texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+  // texU.filter(Texture::LINEAR);
+  // texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
+  // texV.filter(Texture::LINEAR);
+  // texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE, Texture::CLAMP_TO_EDGE);
 
   addTexSphere(sphereMesh, 10, 50, true);
   sphereMesh.update();
@@ -51,9 +51,9 @@ void VideoPlayer::create()
   });
 }
 
-void VideoPlayer::update(al_sec dt, State& state, bool isPrimary)
+void VideoPlayerW::update(al_sec dt, State& state, bool isPrimary)
 {
-  shaderManager.update();
+  // shaderManager.update();
 
   if (loadVideo) {
     if (loadVideoFile()) {
@@ -69,26 +69,27 @@ void VideoPlayer::update(al_sec dt, State& state, bool isPrimary)
       state.video_clock += dt;
     }
 
-    MediaFrame* frame;
+    // MediaFrame* frame;
     if (videoDecoder != nullptr) {
-      frame = videoDecoder->getVideoFrame(state.video_clock);
-      if (frame) {
-        texY.submit(frame->dataY.data());
-        texU.submit(frame->dataU.data());
-        texV.submit(frame->dataV.data());
-        videoDecoder->gotVideoFrame();
-      }
-      else if (videoDecoder->finished() && videoDecoder->isLooping()) {
-        if (isPrimary) {
-          state.video_clock = 0.0;
-        }
-        videoDecoder->seek(0);
-      }
+      videoDecoder->update();
+      // frame = videoDecoder->getVideoFrame(state.video_clock);
+      // if (frame) {
+      //   texY.submit(frame->dataY.data());
+      //   texU.submit(frame->dataU.data());
+      //   texV.submit(frame->dataV.data());
+      //   videoDecoder->gotVideoFrame();
+      // }
+      // else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+      //   if (isPrimary) {
+      //     state.video_clock = 0.0;
+      //   }
+      //   videoDecoder->seek(0);
+      // }
     }
   }
 }
 
-void VideoPlayer::draw(Graphics& g, Nav& nav, bool isPrimary)
+void VideoPlayerW::draw(Graphics& g, Nav& nav, bool isPrimary)
 {
   g.clear();
 
@@ -96,14 +97,16 @@ void VideoPlayer::draw(Graphics& g, Nav& nav, bool isPrimary)
     return;
   }
 
-  auto& videoShader = shaderManager.get("video");
+  // auto& videoShader = shaderManager.get("video");
 
-  g.shader(videoShader);
-  videoShader.uniform("videoBlend", videoBlend.get());
+  // g.shader(videoShader);
+  // videoShader.uniform("videoBlend", videoBlend.get());
 
-  texY.bind(0);
-  texU.bind(1);
-  texV.bind(2);
+  // texY.bind(0);
+  // texU.bind(1);
+  // texV.bind(2);
+  videoDecoder->texture().bind();
+  g.texture();
 
   g.pushMatrix();
   g.translate(videoPose.get().pos());
@@ -114,12 +117,12 @@ void VideoPlayer::draw(Graphics& g, Nav& nav, bool isPrimary)
   g.draw(sphereMesh);
   g.popMatrix();
 
-  texY.unbind(0);
-  texU.unbind(1);
-  texV.unbind(2);
+  // texY.unbind(0);
+  // texU.unbind(1);
+  // texV.unbind(2);
 }
 
-bool VideoPlayer::loadVideoFile()
+bool VideoPlayerW::loadVideoFile()
 {
   std::string path = dataPath + videoToLoad.get();
 
@@ -127,33 +130,34 @@ bool VideoPlayer::loadVideoFile()
     videoDecoder->stop();
   }
 
-  videoDecoder = std::make_unique<VideoDecoder>();
-  videoDecoder->enableAudio(false);
+  videoDecoder = std::make_unique<VideoPlayer>();
+  // videoDecoder->enableAudio(false);
 
-  if (!videoDecoder->load(path.c_str())) {
+
+  if (!videoDecoder->open(path.c_str())) {
     std::cerr << "Error loading video file: " << path << std::endl;
     return false;
   }
 
-  videoDecoder->start();
+  videoDecoder->play();
 
-  texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
-                Texture::RED, Texture::RED, Texture::UBYTE);
-  texY.filter(Texture::LINEAR);
-  texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
-  texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
-                Texture::RED, Texture::RED, Texture::UBYTE);
-  texU.filter(Texture::LINEAR);
-  texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
-  texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
-                Texture::RED, Texture::RED, Texture::UBYTE);
-  texV.filter(Texture::LINEAR);
-  texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  // texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
+  //               Texture::RED, Texture::RED, Texture::UBYTE);
+  // texY.filter(Texture::LINEAR);
+  // texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  // texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
+  //               Texture::RED, Texture::RED, Texture::UBYTE);
+  // texU.filter(Texture::LINEAR);
+  // texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  // texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
+  //               Texture::RED, Texture::RED, Texture::UBYTE);
+  // texV.filter(Texture::LINEAR);
+  // texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 
   return true;
 }
 
-void VideoPlayer::registerParams(ControlGUI& gui, PresetHandler& presets,
+void VideoPlayerW::registerParams(ControlGUI& gui, PresetHandler& presets,
                                  PresetSequencer& seq, State& state)
 {
   gui << playAerialImages << playSF << playBoardwalk << playCoral

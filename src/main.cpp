@@ -7,7 +7,7 @@
 #include "OceanDataViewer.hpp"
 #include "VideoPlayer.hpp"
 #include "al/app/al_DistributedApp.hpp"
-#include "al/app/al_GUIDomain.hpp"
+#include "al/domain/al_GUIDomain.hpp"
 #include "al_ext/statedistribution/al_CuttleboneDomain.hpp"
 
 using namespace al;
@@ -16,7 +16,7 @@ struct SensoriumApp : DistributedAppWithState<State> {
   std::shared_ptr<CuttleboneDomain<State>> cuttleboneDomain;
 
   OceanDataViewer oceanDataViewer;
-  VideoPlayer videoPlayer;
+  VideoPlayerW videoPlayer;
   AudioPlayer audioPlayer;
 
   PresetHandler presets{"data/presets", true};

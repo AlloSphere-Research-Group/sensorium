@@ -9,11 +9,13 @@
 #include "al/graphics/al_Texture.hpp"
 #include "al/graphics/al_VAOMesh.hpp"
 #include "al/ui/al_ControlGUI.hpp"
-#include "al_ext/video/al_VideoDecoder.hpp"
+// #include "al_ext/video/al_VideoDecoder.hpp"
+#include "al_ext/video/al_VideoPlayer.hpp"
+
 
 using namespace al;
 
-struct VideoPlayer {
+struct VideoPlayerW {
   void init(const SearchPaths& paths);
   void create();
   void update(al_sec dt, State& state, bool isPrimary);
@@ -22,7 +24,7 @@ struct VideoPlayer {
   void registerParams(ControlGUI& gui, PresetHandler& presets,
                       PresetSequencer& seq, State& state);
 
-  std::unique_ptr<VideoDecoder> videoDecoder;
+  std::unique_ptr<VideoPlayer> videoDecoder;
   ShaderManager shaderManager;
   Texture texY, texU, texV;
   VAOMesh sphereMesh;
