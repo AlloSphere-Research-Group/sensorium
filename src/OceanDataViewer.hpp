@@ -9,7 +9,8 @@
 #include "al/graphics/al_Shapes.hpp"
 #include "al/graphics/al_Texture.hpp"
 #include "al/ui/al_ControlGUI.hpp"
-#include "al_ext/video/al_VideoDecoder.hpp"
+#include "al_ext/video/al_VideoPlayer.hpp"
+// #include "al_ext/video/al_VideoDecoder.hpp"
 
 using namespace al;
 
@@ -33,7 +34,7 @@ struct OceanDataViewer {
 
   void resetIndex();
 
-  std::unique_ptr<VideoDecoder> videoDecoder;
+  std::unique_ptr<VideoPlayer> videoDecoder;
   Texture texY, texU, texV;
 
   ShaderManager shaderManager;

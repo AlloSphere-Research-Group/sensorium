@@ -161,21 +161,22 @@ void OceanDataViewer::update(double dt, Nav& nav, State& state, bool isPrimary)
   }
 
   if (show_co2.get()) {
-    MediaFrame* frame;
+    // MediaFrame* frame;
     if (videoDecoder != NULL) {
-      frame = videoDecoder->getVideoFrame(state.co2_clock);
-      if (frame) {
-        texY.submit(frame->dataY.data());
-        texU.submit(frame->dataU.data());
-        texV.submit(frame->dataV.data());
-        videoDecoder->gotVideoFrame();
-      }
-      else if (videoDecoder->finished() && videoDecoder->isLooping()) {
-        if (isPrimary) {
-          state.co2_clock = 0;
-        }
-        videoDecoder->seek(0);
-      }
+      videoDecoder->update();
+      // frame = videoDecoder->getVideoFrame(state.co2_clock);
+      // if (frame) {
+      //   texY.submit(frame->dataY.data());
+      //   texU.submit(frame->dataU.data());
+      //   texV.submit(frame->dataV.data());
+      //   videoDecoder->gotVideoFrame();
+      // }
+      // else if (videoDecoder->finished() && videoDecoder->isLooping()) {
+      //   if (isPrimary) {
+      //     state.co2_clock = 0;
+      //   }
+      //   videoDecoder->seek(0);
+      // }
     }
   }
 }
@@ -230,17 +231,19 @@ void OceanDataViewer::draw(Graphics& g, Nav& nav, State& state, Lens& lens)
     cloudTex.unbind(1);
   }
   else {
-    auto& co2Shader = shaderManager.get("co2");
-    g.shader(co2Shader);
-    co2Shader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
-    co2Shader.uniform("dataBlend", dataBlend.get());
-    texY.bind(1);
-    texU.bind(2);
-    texV.bind(3);
+    // auto& co2Shader = shaderManager.get("co2");
+    // g.shader(co2Shader);
+    // co2Shader.uniform("eye_sep", lens.eyeSep() * g.eye() * 0.5f);
+    // co2Shader.uniform("dataBlend", dataBlend.get());
+    // texY.bind(1);
+    // texU.bind(2);
+    // texV.bind(3);
+    g.texture();
+    videoDecoder->texture().bind();
     g.draw(earthMesh);
-    texY.unbind(1);
-    texU.unbind(2);
-    texV.unbind(3);
+    // texY.unbind(1);
+    // texU.unbind(2);
+    // texV.unbind(3);
   }
 
   earthTex.unbind(0);
@@ -372,28 +375,28 @@ void OceanDataViewer::loadDataCO2(const std::string& videoFile)
 {
   std::string path = dataPath + videoFile;
 
-  videoDecoder = std::make_unique<VideoDecoder>();
-  videoDecoder->enableAudio(false);
-  videoDecoder->loop(true);
+  videoDecoder = std::make_unique<VideoPlayer>();
+  // videoDecoder->enableAudio(false);
+  // videoDecoder->loop(true);
 
-  if (!videoDecoder->load(path.c_str())) {
+  if (!videoDecoder->open(path.c_str())) {
     std::cerr << "Error loading video file: " << path << std::endl;
   }
 
-  videoDecoder->start();
+  videoDecoder->play();
 
-  texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
-                Texture::RED, Texture::RED, Texture::UBYTE);
-  texY.filter(Texture::LINEAR);
-  texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
-  texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
-                Texture::RED, Texture::RED, Texture::UBYTE);
-  texU.filter(Texture::LINEAR);
-  texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
-  texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
-                Texture::RED, Texture::RED, Texture::UBYTE);
-  texV.filter(Texture::LINEAR);
-  texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  // texY.create2D(videoDecoder->lineSize()[0], videoDecoder->height(),
+  //               Texture::RED, Texture::RED, Texture::UBYTE);
+  // texY.filter(Texture::LINEAR);
+  // texY.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  // texU.create2D(videoDecoder->lineSize()[1], videoDecoder->height() / 2,
+  //               Texture::RED, Texture::RED, Texture::UBYTE);
+  // texU.filter(Texture::LINEAR);
+  // texU.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
+  // texV.create2D(videoDecoder->lineSize()[2], videoDecoder->height() / 2,
+  //               Texture::RED, Texture::RED, Texture::UBYTE);
+  // texV.filter(Texture::LINEAR);
+  // texV.wrap(Texture::REPEAT, Texture::CLAMP_TO_EDGE);
 }
 
 void OceanDataViewer::registerParams(ControlGUI& gui, PresetHandler& presets,
